@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Smart Air Purifier | Cyberpunk Control</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="data:application/json,{%22name%22:%22AirPurifier%22,%22short_name%22:%22Purifier%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22}">
@@ -14,25 +14,25 @@
 
     <!-- Sidebar Menu -->
     <aside class="sidebar">
-        <div>
+        <div class="sidebar-top">
             <div class="logo"><span class="logo-icon">⚙️</span> Purifier OS</div>
             
-            <!-- ปุ่มสลับโหมดสว่าง/มืด (Theme Toggle) -->
             <div class="theme-toggle-container">
                 <button id="theme-toggle-btn" class="theme-btn" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+                    <span id="theme-icon">🌙</span> <span id="theme-text" class="hide-mobile">Dark Mode</span>
                 </button>
             </div>
-
-            <nav>
-                <ul class="nav-menu">
-                    <li class="active" onclick="switchTab('dashboard')">🏠 Dashboard & Chart</li>
-                    <li onclick="switchTab('alerts')">⚠️ Hazard Logs <span id="alert-badge" class="badge-count">0</span></li>
-                    <li onclick="switchTab('settings')">⚙️ System Settings</li>
-                </ul>
-            </nav>
         </div>
-        <div class="device-status-card">
+
+        <nav>
+            <ul class="nav-menu">
+                <li class="active" onclick="switchTab('dashboard')"><span>🏠</span> <span class="nav-text">Dashboard</span></li>
+                <li onclick="switchTab('alerts')"><span>⚠️</span> <span class="nav-text">Logs</span> <span id="alert-badge" class="badge-count">0</span></li>
+                <li onclick="switchTab('settings')"><span>⚙️</span> <span class="nav-text">Settings</span></li>
+            </ul>
+        </nav>
+
+        <div class="device-status-card hide-mobile">
             <div class="status-indicator">
                 <span id="mqtt-dot" class="dot red"></span>
                 <span id="mqtt-status-text">Disconnected</span>
@@ -49,7 +49,7 @@
                 <p>Telemetry & Live Analytics</p>
             </div>
             <div class="header-right">
-                <button class="btn-export" onclick="exportToCSV()">📥 Export CSV</button>
+                <button class="btn-export" onclick="exportToCSV()">📥 <span class="hide-mobile">Export CSV</span></button>
                 <div class="time-box">
                     <small>ESP32 Clock</small>
                     <h3 id="esp-time">--:--:--</h3>
@@ -57,7 +57,7 @@
             </div>
         </header>
 
-        <!-- ================= PAGE 1: DASHBOARD & CHART ================= -->
+        <!-- ================= PAGE 1: DASHBOARD ================= -->
         <section id="view-dashboard" class="tab-view active">
             <div class="dashboard-grid">
                 <!-- Gauge Card -->
@@ -66,7 +66,7 @@
                         <span>PM2.5 CONCENTRATION</span>
                         <div class="tooltip-container">
                             <span class="tooltip-icon">ⓘ</span>
-                            <div class="tooltip-text">ค่าความเข้มข้นฝุ่น PM2.5 (µg/m³) อ่านจากเซ็นเซอร์ PMS7003 โดยตรง</div>
+                            <div class="tooltip-text">ค่าความเข้มข้นฝุ่น PM2.5 (µg/m³)</div>
                         </div>
                     </div>
                     <div class="circle-progress" id="pm25-ring">
@@ -82,43 +82,27 @@
                     <div class="card mini-card">
                         <div class="card-header">
                             <span>TEMPERATURE</span>
-                            <div class="tooltip-container">
-                                <span class="tooltip-icon">ⓘ</span>
-                                <div class="tooltip-text">อุณหภูมิห้องปัจจุบัน อ่านค่าจากเซ็นเซอร์ DHT11</div>
-                            </div>
                         </div>
                         <div class="data-row"><span class="data-value" id="temp-val">--°C</span><span class="status-badge" id="temp-badge">--</span></div>
                     </div>
                     <div class="card mini-card">
                         <div class="card-header">
                             <span>HUMIDITY</span>
-                            <div class="tooltip-container">
-                                <span class="tooltip-icon">ⓘ</span>
-                                <div class="tooltip-text">ความชื้นสัมพัทธ์ในอากาศ (%) เพื่อประเมินความสบายในห้อง</div>
-                            </div>
                         </div>
                         <div class="data-row"><span class="data-value" id="hum-val">--%</span><span class="status-badge" id="hum-badge">--</span></div>
                     </div>
                     <div class="card mini-card">
                         <div class="card-header">
-                            <span>VOCs & AIR GAS (MQ135)</span>
-                            <div class="tooltip-container">
-                                <span class="tooltip-icon">ⓘ</span>
-                                <div class="tooltip-text">ดรรชนีตรวจจับก๊าซพิษ สารระเหย ควัน และกลิ่นไม่พึงประสงค์</div>
-                            </div>
+                            <span>VOCs & AIR GAS</span>
                         </div>
                         <div class="data-row"><span class="data-value" id="mq135-val">--</span><span class="status-badge" id="mq135-badge">--</span></div>
                     </div>
                 </div>
 
-                <!-- Mode Control Panel -->
+                <!-- Mode Control -->
                 <div class="control-panel card">
                     <div class="cp-header">
                         <h4>OPERATION MODE CONTROL</h4>
-                        <div class="tooltip-container">
-                            <span class="tooltip-icon">ⓘ</span>
-                            <div class="tooltip-text">เลือกโหมดการทำงานของพัดลมกรองอากาศ หรือใช้ AUTO เพื่อให้เครื่องปรับตามระดับฝุ่นอัตโนมัติ</div>
-                        </div>
                     </div>
                     <div class="btn-group">
                         <button class="btn-mode" id="btn-AUTO" onclick="sendControl('AUTO')">AUTO</button>
@@ -130,10 +114,9 @@
                 </div>
             </div>
 
-            <!-- Live Chart Card -->
             <div class="card chart-card">
                 <div class="card-header">
-                    <h3>📈 Real-time PM2.5 & MQ135 Telemetry</h3>
+                    <h3>📈 Real-time Telemetry</h3>
                     <button class="btn-sm" onclick="clearChartHistory()">Clear Data</button>
                 </div>
                 <div class="chart-container">
@@ -141,7 +124,6 @@
                 </div>
             </div>
 
-            <!-- Bottom Status Cards -->
             <div class="bottom-grid" style="margin-top: 20px;">
                 <div class="card status-card">
                     <h4>FAN RELAY STATUS</h4>
@@ -150,21 +132,13 @@
                 <div class="card status-card">
                     <div class="card-header">
                         <h4>FILTER HEALTH</h4>
-                        <div class="tooltip-container">
-                            <span class="tooltip-icon">ⓘ</span>
-                            <div class="tooltip-text">คำนวณจากชั่วโมงทำงานจริงของแผ่นกรอง (สูงสุด 1,500 ชั่วโมง)</div>
-                        </div>
                     </div>
                     <p id="filter-val">--%</p>
                     <button class="btn-reset-filter" onclick="resetFilter()">Reset Filter</button>
                 </div>
                 <div class="card status-card">
                     <div class="card-header">
-                        <h4>⏱️ QUICK AUTO-OFF TIMER</h4>
-                        <div class="tooltip-container">
-                            <span class="tooltip-icon">ⓘ</span>
-                            <div class="tooltip-text">ตั้งเวลาปิดเครื่องอัตโนมัติในคลิกเดียว</div>
-                        </div>
+                        <h4>⏱️ QUICK AUTO-OFF</h4>
                     </div>
                     <div class="timer-display">
                         <span id="timer-val" class="highlight-cyan">OFF</span>
@@ -183,59 +157,60 @@
             </div>
         </section>
 
-        <!-- ================= PAGE 2: HAZARD LOGS & ALERTS ================= -->
+        <!-- ================= PAGE 2: ALERTS ================= -->
         <section id="view-alerts" class="tab-view">
             <div class="card">
                 <div class="card-header">
-                    <h3>⚠️ Danger & Sensor Incident Logs</h3>
+                    <h3>⚠️ Danger & Incident Logs</h3>
                     <button class="btn-sm" onclick="clearAlerts()">Clear Logs</button>
                 </div>
                 <div class="alert-list-container">
-                    <ul id="alert-list" class="alert-list">
-                        <!-- Alert Items Dynamic Insert -->
-                    </ul>
+                    <ul id="alert-list" class="alert-list"></ul>
                 </div>
             </div>
         </section>
 
-        <!-- ================= PAGE 3: SYSTEM SETTINGS ================= -->
+        <!-- ================= PAGE 3: SETTINGS ================= -->
         <section id="view-settings" class="tab-view">
             <div class="settings-grid">
-                <!-- Hardware Threshold Settings -->
+                <!-- Hardware Thresholds -->
                 <div class="card">
-                    <h3>⚙️ Sensor & Auto Mode Thresholds</h3>
-                    <p class="sub-desc">ปรับเกณฑ์การทำงานของเซ็นเซอร์และโหมดกลางคืน</p>
-                    <form onsubmit="saveHardwareSettings(event)" style="margin-top: 15px;">
+                    <div class="card-header" style="margin-bottom:0;">
+                        <h3 style="color:var(--text-main);">⚙️ Sensor Thresholds</h3>
+                        <span id="config-status" style="font-size: 0.75rem; color: var(--text-muted);">Waiting for sync...</span>
+                    </div>
+                    <p class="sub-desc" style="margin-bottom:15px;">ค่าปัจจุบันจะถูกดึงมาจาก ESP32 อัตโนมัติ</p>
+                    <form onsubmit="saveHardwareSettings(event)">
                         <div class="form-group">
-                            <label>PM2.5 Thresholds (µg/m³)</label>
+                            <label>PM2.5 (µg/m³)</label>
                             <div class="form-row">
                                 <input type="number" id="cfg-pm-med" placeholder="Med Speed" required>
                                 <input type="number" id="cfg-pm-high" placeholder="High Speed" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>MQ135 Gas Thresholds (Raw ADC)</label>
+                            <label>MQ135 Gas (Raw)</label>
                             <div class="form-row">
                                 <input type="number" id="cfg-mq-med" placeholder="Med Speed" required>
                                 <input type="number" id="cfg-mq-high" placeholder="High Speed" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Night Mode Lock (Hours 0-23)</label>
+                            <label>Night Mode (Hours 0-23)</label>
                             <div class="form-row">
                                 <input type="number" id="cfg-night-start" placeholder="Start Hour" min="0" max="23" required>
                                 <input type="number" id="cfg-night-end" placeholder="End Hour" min="0" max="23" required>
                             </div>
                         </div>
-                        <button type="submit" class="btn-submit">Push Thresholds to ESP32</button>
+                        <button type="submit" class="btn-submit">Push to ESP32</button>
                     </form>
                 </div>
 
-                <!-- Cloud & Connectivity Settings -->
+                <!-- Cloud Settings -->
                 <div class="card">
-                    <h3>🌐 Cloud Broker & Remote Config</h3>
-                    <p class="sub-desc">จัดการการเชื่อมต่อ Wi-Fi และ EMQX Cloud Broker</p>
-                    <form onsubmit="saveCloudSettings(event)" style="margin-top: 15px;">
+                    <h3>🌐 Wi-Fi & Cloud Broker</h3>
+                    <p class="sub-desc" style="margin-bottom:15px;">เปลี่ยนเครือข่ายจะทำให้บอร์ดรีสตาร์ท</p>
+                    <form onsubmit="saveCloudSettings(event)">
                         <div class="form-group">
                             <label>Target Wi-Fi SSID</label>
                             <input type="text" id="cfg-wifi-ssid" placeholder="Wi-Fi Name" required>
@@ -245,7 +220,7 @@
                             <input type="password" id="cfg-wifi-pass" placeholder="Wi-Fi Password">
                         </div>
                         <div class="form-group">
-                            <label>MQTT Cloud Host</label>
+                            <label>MQTT Host</label>
                             <input type="text" id="cfg-mqtt-host" placeholder="Broker Hostname" required>
                         </div>
                         <div class="form-group">
@@ -255,7 +230,7 @@
                                 <input type="text" id="cfg-mqtt-user" placeholder="Username">
                             </div>
                         </div>
-                        <button type="submit" class="btn-submit btn-warning">Re-provision ESP32 Wi-Fi / Cloud</button>
+                        <button type="submit" class="btn-submit btn-warning">Re-provision ESP32</button>
                     </form>
                 </div>
             </div>
