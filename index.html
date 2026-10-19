@@ -48,7 +48,6 @@
             <span class="cloud-badge"><span class="status-dot" id="dot"></span><span id="conn-lbl">CONNECTING</span></span>
         </div>
         
-        <!-- Main Sensor Data -->
         <div class="card" id="card-main">
             <div style="text-align:center;">
                 <div class="lbl">
@@ -85,23 +84,6 @@
             </div>
         </div>
 
-        <!-- NEW: 🌙 SLEEP MODE (DO NOT DISTURB) -->
-        <div class="card">
-            <div style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                <span>🌙 SLEEP MODE (DO NOT DISTURB)</span>
-                <span style="font-weight:bold; color:var(--cyan);" id="q-timer">OFF</span>
-            </div>
-            <div class="btn-grid4">
-                <div class="btn" onclick="sendCmd('qtimer', 2)">2 HRS</div>
-                <div class="btn" onclick="sendCmd('qtimer', 4)">4 HRS</div>
-                <div class="btn" onclick="sendCmd('qtimer', 8)">8 HRS</div>
-                <div class="btn" style="color:var(--red); border-color:var(--red);" onclick="sendCmd('qtimer', 0)">CANCEL</div>
-            </div>
-            <div style="font-size:10px; color:var(--sub); margin-top:8px; text-align:center;">
-                ล็อคความเร็วพัดลมไว้ที่ระดับ <b>LOW</b> ป้องกันเสียงดังรบกวนเวลานอน
-            </div>
-        </div>
-
         <!-- Timer Card: Countdown Mode -->
         <div class="card">
             <div style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
@@ -116,7 +98,6 @@
             </div>
         </div>
 
-        <!-- Chart.js Trend -->
         <div class="card">
             <div style="font-size:12px; font-weight:bold; color:var(--cyan); display:flex; justify-content:space-between; align-items:center;">
                 <span>📈 Real-time Trend</span>
@@ -127,7 +108,6 @@
             </div>
         </div>
 
-        <!-- System Controls & Info Box -->
         <div class="card">
             <div style="font-size:11px; text-align:center; color:var(--sub); margin-bottom:6px;">
                 MODE: <b style="color:var(--cyan);" id="c-mode">AUTO</b> | FAN SPEED: <b style="color:var(--cyan);" id="f-mode">MED</b>
@@ -142,16 +122,20 @@
             
             <div class="info-box">
                 <b style="color:var(--text); font-size:11px;">🤖 SMART AUTO MODE</b><br>
-                ระบบจะวิเคราะห์คุณภาพอากาศและปรับระดับพัดลมอัตโนมัติ:<br>
-                • <b style="color:var(--red);">HIGH:</b> เมื่อฝุ่น PM2.5 > 35 หรือ ควัน/แก๊ส > 600<br>
-                • <b style="color:var(--yellow);">MED:</b> เมื่อฝุ่น PM2.5 > 15 หรือ ควัน/แก๊ส > 300<br>
-                • <b style="color:var(--green);">LOW:</b> เมื่ออากาศปกติ (ค่าต่ำกว่าเกณฑ์)
+                ระบบวิเคราะห์คุณภาพอากาศและปรับพัดลมอัตโนมัติ:<br>
+                • <b style="color:var(--red);">HIGH:</b> ฝุ่น > 35 หรือ ควัน > 600<br>
+                • <b style="color:var(--yellow);">MED:</b> ฝุ่น > 15 หรือ ควัน > 300<br>
+                • <b style="color:var(--green);">LOW:</b> อากาศปกติ<br>
+                <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,240,255,0.2);">
+                    🌙 <b>NIGHT MODE (22:00 - 06:00):</b> <br>
+                    ระบบล็อคพัดลมระดับ <b>LOW</b> อัตโนมัติ ป้องกันเสียงรบกวนเวลานอน
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // CONFIG MQTT (อย่าลืมเปลี่ยนให้ตรงกับของคุณ)
+        // CONFIG MQTT (แก้ไขเป็นของตัวเอง)
         const MQTT_HOST = "o1c1f1d1.ala.asia-southeast1.emqxsl.com"; 
         const MQTT_PORT = 8084;                                     
         const MQTT_USER = "purifier_admin";                         
@@ -221,20 +205,11 @@
             document.getElementById('mq').innerHTML   = (d.mq135 !== null) ? d.mq135 : '<span class="error-val">⚠️ ERROR</span>';
             document.getElementById('time').innerText = d.time;
 
-            // Timer (ปิดเครื่อง)
             if(d.o_timer) {
                 let ot = document.getElementById('o-timer');
                 ot.innerText = d.o_timer;
                 if(d.o_timer !== "OFF") ot.style.color = "var(--green)";
                 else ot.style.color = "var(--yellow)";
-            }
-
-            // Sleep Mode Timer (ห้ามรบกวน)
-            if(d.q_timer) {
-                let qt = document.getElementById('q-timer');
-                qt.innerText = d.q_timer;
-                if(d.q_timer !== "OFF") qt.style.color = "var(--green)";
-                else qt.style.color = "var(--cyan)";
             }
 
             document.getElementById('c-mode').innerText = d.c_mode;
