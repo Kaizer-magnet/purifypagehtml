@@ -16,6 +16,14 @@
     <aside class="sidebar">
         <div>
             <div class="logo"><span class="logo-icon">⚙️</span> Purifier OS</div>
+            
+            <!-- ปุ่มสลับโหมดสว่าง/มืด (Theme Toggle) -->
+            <div class="theme-toggle-container">
+                <button id="theme-toggle-btn" class="theme-btn" onclick="toggleTheme()">
+                    <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+                </button>
+            </div>
+
             <nav>
                 <ul class="nav-menu">
                     <li class="active" onclick="switchTab('dashboard')">🏠 Dashboard & Chart</li>
@@ -56,7 +64,10 @@
                 <div class="card main-card">
                     <div class="card-header">
                         <span>PM2.5 CONCENTRATION</span>
-                        <span class="tooltip-icon" data-tip="ค่าฝุ่น PM2.5 (µg/m³)">ⓘ</span>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">ⓘ</span>
+                            <div class="tooltip-text">ค่าความเข้มข้นฝุ่น PM2.5 (µg/m³) อ่านจากเซ็นเซอร์ PMS7003 โดยตรง</div>
+                        </div>
                     </div>
                     <div class="circle-progress" id="pm25-ring">
                         <h2 id="pm25-val">--</h2>
@@ -69,15 +80,33 @@
                 <!-- Side Telemetry -->
                 <div class="side-cards">
                     <div class="card mini-card">
-                        <div class="card-header"><span>TEMPERATURE</span><span class="tooltip-icon" data-tip="อุณหภูมิห้อง">ⓘ</span></div>
+                        <div class="card-header">
+                            <span>TEMPERATURE</span>
+                            <div class="tooltip-container">
+                                <span class="tooltip-icon">ⓘ</span>
+                                <div class="tooltip-text">อุณหภูมิห้องปัจจุบัน อ่านค่าจากเซ็นเซอร์ DHT11</div>
+                            </div>
+                        </div>
                         <div class="data-row"><span class="data-value" id="temp-val">--°C</span><span class="status-badge" id="temp-badge">--</span></div>
                     </div>
                     <div class="card mini-card">
-                        <div class="card-header"><span>HUMIDITY</span><span class="tooltip-icon" data-tip="ความชื้นสัมพัทธ์">ⓘ</span></div>
+                        <div class="card-header">
+                            <span>HUMIDITY</span>
+                            <div class="tooltip-container">
+                                <span class="tooltip-icon">ⓘ</span>
+                                <div class="tooltip-text">ความชื้นสัมพัทธ์ในอากาศ (%) เพื่อประเมินความสบายในห้อง</div>
+                            </div>
+                        </div>
                         <div class="data-row"><span class="data-value" id="hum-val">--%</span><span class="status-badge" id="hum-badge">--</span></div>
                     </div>
                     <div class="card mini-card">
-                        <div class="card-header"><span>VOCs & AIR GAS (MQ135)</span><span class="tooltip-icon" data-tip="ค่าก๊าซพิษ ควัน และสารระเหย">ⓘ</span></div>
+                        <div class="card-header">
+                            <span>VOCs & AIR GAS (MQ135)</span>
+                            <div class="tooltip-container">
+                                <span class="tooltip-icon">ⓘ</span>
+                                <div class="tooltip-text">ดรรชนีตรวจจับก๊าซพิษ สารระเหย ควัน และกลิ่นไม่พึงประสงค์</div>
+                            </div>
+                        </div>
                         <div class="data-row"><span class="data-value" id="mq135-val">--</span><span class="status-badge" id="mq135-badge">--</span></div>
                     </div>
                 </div>
@@ -86,7 +115,10 @@
                 <div class="control-panel card">
                     <div class="cp-header">
                         <h4>OPERATION MODE CONTROL</h4>
-                        <span class="tooltip-icon" data-tip="สลับโหมดพัดลม หรือใช้ AUTO">ⓘ</span>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">ⓘ</span>
+                            <div class="tooltip-text">เลือกโหมดการทำงานของพัดลมกรองอากาศ หรือใช้ AUTO เพื่อให้เครื่องปรับตามระดับฝุ่นอัตโนมัติ</div>
+                        </div>
                     </div>
                     <div class="btn-group">
                         <button class="btn-mode" id="btn-AUTO" onclick="sendControl('AUTO')">AUTO</button>
@@ -118,7 +150,10 @@
                 <div class="card status-card">
                     <div class="card-header">
                         <h4>FILTER HEALTH</h4>
-                        <span class="tooltip-icon" data-tip="อายุการใช้งานไส้กรอง">ⓘ</span>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">ⓘ</span>
+                            <div class="tooltip-text">คำนวณจากชั่วโมงทำงานจริงของแผ่นกรอง (สูงสุด 1,500 ชั่วโมง)</div>
+                        </div>
                     </div>
                     <p id="filter-val">--%</p>
                     <button class="btn-reset-filter" onclick="resetFilter()">Reset Filter</button>
@@ -126,7 +161,10 @@
                 <div class="card status-card">
                     <div class="card-header">
                         <h4>⏱️ QUICK AUTO-OFF TIMER</h4>
-                        <span class="tooltip-icon" data-tip="กดเลือกเวลาปิดเครื่องอัตโนมัติได้ทันที">ⓘ</span>
+                        <div class="tooltip-container">
+                            <span class="tooltip-icon">ⓘ</span>
+                            <div class="tooltip-text">ตั้งเวลาปิดเครื่องอัตโนมัติในคลิกเดียว</div>
+                        </div>
                     </div>
                     <div class="timer-display">
                         <span id="timer-val" class="highlight-cyan">OFF</span>
