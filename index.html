@@ -1,240 +1,135 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Air Purifier Cloud OS Pro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Air Purifier Dashboard</title>
     <style>
-        :root { --bg: #0b0f19; --card: rgba(22, 30, 46, 0.85); --border: rgba(255, 255, 255, 0.1); --cyan: #00f0ff; --red: #ff1744; --yellow: #ffd600; --green: #00e676; --text: #f0f4f8; --sub: #8a99ad; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { overflow-x: hidden; } 
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); padding: 20px 10px; display: flex; justify-content: center; min-height: 100vh; }
-        .wrap { width: 100%; max-width: 480px; }
-        .h1 { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .cloud-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(0, 240, 255, 0.15); color: var(--cyan); border: 1px solid var(--cyan); }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; backdrop-filter: blur(10px); transition: border-color 0.4s ease; }
-        .pm-val { font-size: 52px; font-weight: bold; text-align: center; color: var(--cyan); margin: 4px 0; transition: color 0.4s ease; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid transparent; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-        .box { background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px; text-align: center; position: relative; }
-        .lbl { font-size: 10px; color: var(--sub); display: flex; align-items: center; justify-content: center; gap: 4px; }
-        .val { font-size: 15px; font-weight: bold; color: var(--text); margin-top: 4px; }
-        .error-val { color: var(--red) !important; font-size: 12px !important; }
-        
-        .tooltip { position: relative; display: inline-flex; align-items: center; cursor: help; color: #fff; background: rgba(255,255,255,0.1); border-radius: 50%; width: 14px; height: 14px; justify-content: center; font-size: 9px; font-weight: bold; }
-        .tooltip .tooltiptext { visibility: hidden; width: max-content; max-width: 80vw; background-color: rgba(11, 15, 25, 0.98); color: #fff; text-align: left; border-radius: 8px; padding: 10px; position: absolute; z-index: 999; bottom: 130%; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: normal; border: 1px solid var(--cyan); opacity: 0; transition: opacity 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); line-height: 1.5; pointer-events: none; white-space: normal; }
-        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: var(--cyan) transparent transparent transparent; }
-        .tooltip:hover .tooltiptext, .tooltip:active .tooltiptext { visibility: visible; opacity: 1; }
-        
-        .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
-        .btn-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
-        .btn { display: flex; justify-content: center; align-items: center; padding: 10px 0; border-radius: 10px; font-size: 11px; font-weight: bold; color: var(--sub); background: rgba(255,255,255,0.04); border: 1px solid var(--border); cursor: pointer; user-select: none; transition: all 0.2s; gap: 5px; }
-        .btn:active { transform: scale(0.95); }
-        .active { background: rgba(0, 240, 255, 0.2) !important; color: #fff !important; border-color: var(--cyan) !important; box-shadow: 0 0 12px rgba(0,240,255,0.3); }
-        
-        .chart-container { position: relative; height: 160px; width: 100%; margin-top: 10px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--red); margin-right: 4px; }
-        .online { background: var(--green) !important; box-shadow: 0 0 8px var(--green); }
+        /* ตั้งค่าธีม Dark Mode */
+        :root {
+            --bg-color: #0b0f19;
+            --sidebar-bg: #111827;
+            --card-bg: #1f2937;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-cyan: #00f0ff;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
 
-        .info-box { background: rgba(0, 240, 255, 0.05); border-left: 3px solid var(--cyan); padding: 12px; margin-top: 12px; font-size: 10px; color: var(--sub); text-align: left; line-height: 1.6; border-radius: 0 8px 8px 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar ซ้าย */
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent-cyan); margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
+        .nav-menu { list-style: none; }
+        .nav-menu li { padding: 12px 15px; margin-bottom: 10px; border-radius: 8px; cursor: pointer; color: var(--text-muted); transition: 0.3s; }
+        .nav-menu li.active, .nav-menu li:hover { background-color: var(--card-bg); color: var(--text-main); }
+        .device-status-mini { background: #052e16; color: var(--accent-green); padding: 15px; border-radius: 8px; font-size: 0.85rem; border: 1px solid #065f46; }
+
+        /* ส่วนพื้นที่หลักด้านขวา */
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .header h1 { font-size: 1.8rem; margin-bottom: 5px; }
+        .header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 30px; }
+
+        /* การจัดวาง Grid สำหรับ Cards */
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; grid-gap: 20px; margin-bottom: 20px; }
+        
+        .card { background-color: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); }
+        
+        /* Card หลัก (PM2.5) */
+        .main-card { background: linear-gradient(135deg, #1e3a8a 0%, #172554 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .circle-progress { width: 150px; height: 150px; border-radius: 50%; border: 8px solid var(--accent-cyan); display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 20px 0; }
+        .circle-progress h2 { font-size: 3rem; margin: 0; }
+        .circle-progress span { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Cards ข้อมูลด้านขวา */
+        .side-cards { display: grid; grid-template-rows: 1fr 1fr; grid-gap: 20px; }
+        .data-row { display: flex; justify-content: space-between; align-items: center; }
+        .data-value { font-size: 2rem; font-weight: bold; }
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .bg-green { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+        /* แถบสถานะด้านล่าง */
+        .bottom-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 20px; }
+        .status-card h4 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        .status-card p { font-size: 1.1rem; font-weight: 500; }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <div class="h1">
-            Air Purifier OS
-            <span class="cloud-badge"><span class="status-dot" id="dot"></span><span id="conn-lbl">CONNECTING</span></span>
+
+    <!-- แถบเมนูด้านซ้าย -->
+    <div class="sidebar">
+        <div>
+            <div class="logo">⚙️ Smart Purifier</div>
+            <ul class="nav-menu">
+                <li class="active">🏠 Dashboard</li>
+                <li>📊 History</li>
+                <li>⚠️ Alerts</li>
+                <li>⚙️ Settings</li>
+            </ul>
         </div>
-        
-        <div class="card" id="card-main">
-            <div style="text-align:center;">
-                <div class="lbl">
-                    PM2.5 CONCENTRATION
-                    <span class="tooltip">i
-                        <span class="tooltiptext">
-                            <b style="color:var(--cyan);">ดัชนีฝุ่นละอองขนาดเล็ก (µg/m³)</b><br>
-                            🟢 00 - 15 : อากาศดีเยี่ยม<br>
-                            🟡 16 - 35 : คุณภาพปานกลาง<br>
-                            🟠 36 - 50 : เริ่มมีผลกระทบต่อสุขภาพ<br>
-                            🔴 > 50 : อันตราย ควรหลีกเลี่ยง
-                        </span>
-                    </span>
+        <div class="device-status-mini">
+            🟢 Device Online<br>
+            <strong>ESP32 - Vercel MQTT</strong>
+        </div>
+    </div>
+
+    <!-- พื้นที่แสดงข้อมูลหลัก -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Air Quality Overview</h1>
+            <p>Living Room Air Purifier Node</p>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- Card ซ้ายใหญ่ (AQI / PM2.5) -->
+            <div class="card main-card">
+                <p style="font-size: 0.9rem; letter-spacing: 1px;">AIR QUALITY INDEX (PM2.5)</p>
+                <div class="circle-progress" id="pm25-ring">
+                    <h2 id="pm25-val">12</h2>
+                    <span>µg/m³</span>
                 </div>
-                <div class="pm-val" id="pm">-- <span style="font-size:16px;">&mu;g/m&sup3;</span></div>
-                <div class="badge" id="badge">WAITING DATA...</div>
+                <h3 id="pm25-status">Quality: Good</h3>
+                <p style="font-size: 0.85rem; color: #9ca3af; margin-top: 10px;">Air quality is sitting in the ideal band right now.</p>
             </div>
-            <div class="grid2">
-                <div class="box"><div class="lbl">TEMP</div><div class="val" id="temp">-- &deg;C</div></div>
-                <div class="box"><div class="lbl">HUMIDITY</div><div class="val" id="hum">-- %RH</div></div>
-                <div class="box">
-                    <div class="lbl">MQ135 (GAS) 
-                        <span class="tooltip">i
-                            <span class="tooltiptext">
-                                <b style="color:var(--cyan);">เซนเซอร์ตรวจจับควันและแก๊ส</b><br>
-                                💨 < 300 : สภาพอากาศปกติ<br>
-                                ⚠️ > 600 : มีควันหรือกลิ่นอับสะสม
-                            </span>
-                        </span>
+
+            <!-- Card ขวา (Temp & Humidity & MQ135) -->
+            <div class="side-cards">
+                <div class="card">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Temperature</p>
+                    <div class="data-row">
+                        <span class="data-value" id="temp-val">26.5°C</span>
+                        <span class="status-badge bg-green">Comfortable</span>
                     </div>
-                    <div class="val" id="mq">--</div>
                 </div>
-                <div class="box"><div class="lbl">SERVER TIME</div><div class="val" id="time">--:--:--</div></div>
-            </div>
-        </div>
-
-        <!-- Timer Card: Countdown Mode -->
-        <div class="card">
-            <div style="font-size:12px; display:flex; justify-content:space-between; align-items:center;">
-                <span>⏳ AUTO SHUTDOWN</span>
-                <span style="font-weight:bold; color:var(--yellow);" id="o-timer">OFF</span>
-            </div>
-            <div class="btn-grid4">
-                <div class="btn" onclick="sendCmd('timer', 1)">1 HR</div>
-                <div class="btn" onclick="sendCmd('timer', 2)">2 HRS</div>
-                <div class="btn" onclick="sendCmd('timer', 8)">8 HRS</div>
-                <div class="btn" style="color:var(--red); border-color:var(--red);" onclick="sendCmd('timer', 0)">CANCEL</div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div style="font-size:12px; font-weight:bold; color:var(--cyan); display:flex; justify-content:space-between; align-items:center;">
-                <span>📈 Real-time Trend</span>
-                <div class="btn" style="padding: 4px 8px; font-size: 9px; margin: 0; width: auto;" onclick="exportCSV()">📥 EXPORT CSV</div>
-            </div>
-            <div class="chart-container">
-                <canvas id="pmChart"></canvas>
-            </div>
-        </div>
-
-        <div class="card">
-            <div style="font-size:11px; text-align:center; color:var(--sub); margin-bottom:6px;">
-                MODE: <b style="color:var(--cyan);" id="c-mode">AUTO</b> | FAN SPEED: <b style="color:var(--cyan);" id="f-mode">MED</b>
-            </div>
-            <div class="btn" id="btn-AUTO" style="color:var(--cyan); border-color:var(--cyan);" onclick="sendCmd('mode','AUTO')">SMART AUTO MODE</div>
-            <div class="btn-grid">
-                <div class="btn" id="btn-HIGH" onclick="sendCmd('mode','HIGH')">HIGH</div>
-                <div class="btn" id="btn-MED" onclick="sendCmd('mode','MED')">MED</div>
-                <div class="btn" id="btn-LOW" onclick="sendCmd('mode','LOW')">LOW</div>
-            </div>
-            <div class="btn" id="btn-OFF" style="margin-top:8px; color:var(--red); border-color:var(--red);" onclick="sendCmd('mode','OFF')">POWER OFF</div>
-            
-            <div class="info-box">
-                <b style="color:var(--text); font-size:11px;">🤖 SMART AUTO MODE</b><br>
-                ระบบวิเคราะห์คุณภาพอากาศและปรับพัดลมอัตโนมัติ:<br>
-                • <b style="color:var(--red);">HIGH:</b> ฝุ่น > 35 หรือ ควัน > 600<br>
-                • <b style="color:var(--yellow);">MED:</b> ฝุ่น > 15 หรือ ควัน > 300<br>
-                • <b style="color:var(--green);">LOW:</b> อากาศปกติ<br>
-                <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,240,255,0.2);">
-                    🌙 <b>NIGHT MODE (22:00 - 06:00):</b> <br>
-                    ระบบล็อคพัดลมระดับ <b>LOW</b> อัตโนมัติ ป้องกันเสียงรบกวนเวลานอน
+                <div class="card">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">VOCs / Gas (MQ135)</p>
+                    <div class="data-row">
+                        <span class="data-value" id="mq135-val">120</span>
+                        <span class="status-badge bg-green">Normal</span>
+                    </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- แถบข้อมูลด้านล่าง -->
+        <div class="bottom-grid">
+            <div class="card status-card">
+                <h4>DEVICE STATUS</h4>
+                <p style="color: var(--accent-green);">Online</p>
+            </div>
+            <div class="card status-card">
+                <h4>FILTER HEALTH</h4>
+                <p id="filter-val">98% Remaining</p>
+            </div>
+            <div class="card status-card">
+                <h4>LAST UPDATE</h4>
+                <p id="last-update">Just now</p>
             </div>
         </div>
     </div>
 
-    <script>
-        // CONFIG MQTT (แก้ไขเป็นของตัวเอง)
-        const MQTT_HOST = "o1c1f1d1.ala.asia-southeast1.emqxsl.com"; 
-        const MQTT_PORT = 8084;                                     
-        const MQTT_USER = "purifier_admin";                         
-        const MQTT_PASS = "Pass1234!";                              
-        const CLIENT_ID = "web_ui_" + Math.random().toString(16).substr(2, 8);
-
-        const TOPIC_DATA = "air_purifier/data";
-        const TOPIC_CMD  = "air_purifier/cmd";
-
-        let pmHistory = JSON.parse(localStorage.getItem('pmHistory')) || [];
-        let timeHistory = JSON.parse(localStorage.getItem('timeHistory')) || [];
-
-        const ctx = document.getElementById('pmChart').getContext('2d');
-        let gradient = ctx.createLinearGradient(0, 0, 0, 160);
-        gradient.addColorStop(0, 'rgba(0, 240, 255, 0.4)');
-        gradient.addColorStop(1, 'rgba(0, 240, 255, 0.0)');
-
-        let pmChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: timeHistory, datasets: [{ label: 'PM2.5', data: pmHistory, borderColor: '#00f0ff', backgroundColor: gradient, borderWidth: 2, fill: true, tension: 0.4, pointRadius: 2, pointBackgroundColor: '#fff' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#8a99ad', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.05)' } }, y: { beginAtZero: true, suggestedMax: 50, ticks: { color: '#8a99ad', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
-        });
-
-        let client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, "/mqtt", CLIENT_ID);
-        client.onConnectionLost = onConnectionLost;
-        client.onMessageArrived = onMessageArrived;
-
-        connectMQTT();
-
-        function connectMQTT() { client.connect({ onSuccess: onConnect, onFailure: onFail, userName: MQTT_USER, password: MQTT_PASS, useSSL: true }); }
-        function onConnect() { document.getElementById('dot').classList.add('online'); document.getElementById('conn-lbl').innerText = "CLOUD ONLINE"; client.subscribe(TOPIC_DATA); }
-        function onFail() { document.getElementById('conn-lbl').innerText = "RETRYING..."; setTimeout(connectMQTT, 3000); }
-        function onConnectionLost() { document.getElementById('dot').classList.remove('online'); document.getElementById('conn-lbl').innerText = "DISCONNECTED"; setTimeout(connectMQTT, 3000); }
-
-        function onMessageArrived(msg) {
-            if(msg.destinationName === TOPIC_DATA) { try { updateUI(JSON.parse(msg.payloadString)); } catch(e) {} }
-        }
-
-        function sendCmd(k, v) {
-            let obj = {}; obj[k] = v;
-            let message = new Paho.MQTT.Message(JSON.stringify(obj));
-            message.destinationName = TOPIC_CMD;
-            client.send(message);
-        }
-
-        function exportCSV() {
-            if (timeHistory.length === 0) return alert("ไม่มีข้อมูลประวัติให้บันทึก");
-            let csvContent = "data:text/csv;charset=utf-8,Time,PM2.5_ug_m3\n";
-            for (let i = 0; i < timeHistory.length; i++) csvContent += timeHistory[i] + "," + pmHistory[i] + "\n";
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "AirPurifier_DataLog.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
-
-        function updateUI(d) {
-            let themeColor = d.st_color;
-            document.getElementById('pm').style.color = themeColor;
-            document.getElementById('card-main').style.borderColor = themeColor;
-
-            if (d.pm25 !== null) document.getElementById('pm').innerHTML = d.pm25 + ' <span style="font-size:16px; color:#fff;">&mu;g/m&sup3;</span>';
-            else document.getElementById('pm').innerHTML = '<span style="font-size:24px; color:var(--red);">⚠️ SENSOR ERROR</span>';
-
-            let b = document.getElementById('badge');
-            b.innerText = d.st_text; b.style.color = themeColor; b.style.borderColor = themeColor;
-
-            document.getElementById('temp').innerHTML = (d.temp !== null) ? d.temp + ' &deg;C' : '<span class="error-val">⚠️ ERROR</span>';
-            document.getElementById('hum').innerHTML  = (d.hum !== null) ? d.hum + ' %RH' : '<span class="error-val">⚠️ ERROR</span>';
-            document.getElementById('mq').innerHTML   = (d.mq135 !== null) ? d.mq135 : '<span class="error-val">⚠️ ERROR</span>';
-            document.getElementById('time').innerText = d.time;
-
-            if(d.o_timer) {
-                let ot = document.getElementById('o-timer');
-                ot.innerText = d.o_timer;
-                if(d.o_timer !== "OFF") ot.style.color = "var(--green)";
-                else ot.style.color = "var(--yellow)";
-            }
-
-            document.getElementById('c-mode').innerText = d.c_mode;
-            document.getElementById('f-mode').innerText = d.f_mode;
-
-            ['AUTO', 'HIGH', 'MED', 'LOW', 'OFF'].forEach(m => {
-                let btn = document.getElementById('btn-' + m);
-                if(btn) {
-                    if(d.c_mode === m) btn.classList.add('active');
-                    else btn.classList.remove('active');
-                }
-            });
-
-            if(d.pm25 !== null && d.time) {
-                let shortTime = d.time.substring(0, 5);
-                if (timeHistory.length === 0 || timeHistory[timeHistory.length - 1] !== shortTime) {
-                    if(pmHistory.length >= 25) { pmHistory.shift(); timeHistory.shift(); }
-                    pmHistory.push(d.pm25); timeHistory.push(shortTime);
-                    localStorage.setItem('pmHistory', JSON.stringify(pmHistory));
-                    localStorage.setItem('timeHistory', JSON.stringify(timeHistory));
-                    pmChart.data.datasets[0].borderColor = themeColor;
-                    pmChart.update();
-                }
-            }
-        }
-    </script>
 </body>
 </html>
