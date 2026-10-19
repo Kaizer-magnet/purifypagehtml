@@ -112,20 +112,36 @@
             <!-- Bottom Status Cards -->
             <div class="bottom-grid" style="margin-top: 20px;">
                 <div class="card status-card">
-    <div class="card-header">
-        <h4>⏱️ QUICK AUTO-OFF TIMER</h4>
-        <span class="tooltip-icon" data-tip="กดเลือกเวลาปิดเครื่องอัตโนมัติได้ทันที">ⓘ</span>
-    </div>
-    <div class="timer-display">
-        <span id="timer-val" class="highlight-cyan">OFF</span>
-    </div>
-    <div class="preset-btn-group">
-        <button class="btn-preset" onclick="setTimer(1)">+1h</button>
-        <button class="btn-preset" onclick="setTimer(2)">+2h</button>
-        <button class="btn-preset" onclick="setTimer(4)">+4h</button>
-        <button class="btn-preset btn-cancel" onclick="setTimer(0)">Off</button>
-    </div>
-</div>
+                    <h4>FAN RELAY STATUS</h4>
+                    <p id="fan-speed" class="highlight-cyan">--</p>
+                </div>
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h4>FILTER HEALTH</h4>
+                        <span class="tooltip-icon" data-tip="อายุการใช้งานไส้กรอง">ⓘ</span>
+                    </div>
+                    <p id="filter-val">--%</p>
+                    <button class="btn-reset-filter" onclick="resetFilter()">Reset Filter</button>
+                </div>
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h4>⏱️ QUICK AUTO-OFF TIMER</h4>
+                        <span class="tooltip-icon" data-tip="กดเลือกเวลาปิดเครื่องอัตโนมัติได้ทันที">ⓘ</span>
+                    </div>
+                    <div class="timer-display">
+                        <span id="timer-val" class="highlight-cyan">OFF</span>
+                    </div>
+                    <div class="preset-btn-group">
+                        <button class="btn-preset" onclick="setTimer(1)">+1h</button>
+                        <button class="btn-preset" onclick="setTimer(2)">+2h</button>
+                        <button class="btn-preset" onclick="setTimer(4)">+4h</button>
+                        <button class="btn-preset btn-cancel" onclick="setTimer(0)">Off</button>
+                    </div>
+                </div>
+                <div class="card status-card">
+                    <h4>QUIET TIMER</h4>
+                    <p id="qtimer-val">OFF</p>
+                </div>
             </div>
         </section>
 
@@ -208,7 +224,6 @@
         </section>
     </main>
 
-    <link rel="stylesheet" href="style.css">
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
