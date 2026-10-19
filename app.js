@@ -1,6 +1,3 @@
-// =====================================
-// MQTT Cloud Connection Settings
-// =====================================
 const broker = "o1c1f1d1.ala.asia-southeast1.emqxsl.com";
 const port = 8084;
 const clientId = "vercel_app_" + Math.random().toString(16).substr(2, 8);
@@ -9,6 +6,7 @@ const topicCmd = "air_purifier/cmd";
 
 let chart = null;
 let telemetryHistory = JSON.parse(localStorage.getItem("telemetryHistory") || "[]");
+let alertLogs = JSON.parse(localStorage.getItem("alertLogs") || "[]");
 
 const client = new Paho.MQTT.Client(broker, port, clientId);
 client.onConnectionLost = onConnectionLost;
@@ -22,6 +20,8 @@ client.connect({
         document.getElementById("mqtt-dot").className = "dot green";
         document.getElementById("mqtt-status-text").innerText = "Online";
         client.subscribe(topicData);
+        initChart();
+        renderAlerts();
     },
     onFailure: () => {
         document.getElementById("mqtt-dot").className = "dot red";
@@ -29,23 +29,18 @@ client.connect({
     }
 });
 
-function onConnectionLost(req) {
+function onConnectionLost() {
     document.getElementById("mqtt-dot").className = "dot red";
     document.getElementById("mqtt-status-text").innerText = "Disconnected";
     setTimeout(() => location.reload(), 5000);
 }
 
-// =====================================
-// Telemetry Handler & UI Render
-// =====================================
+// ================= TELEMETRY ENGINE =================
 function onMessageArrived(msg) {
     try {
         const data = JSON.parse(msg.payloadString);
         
-        // Update ESP32 Clock
         document.getElementById("esp-time").innerText = data.time || "--:--:--";
-        
-        // Render PM2.5 Gauge
         const pmVal = data.pm25 !== null ? data.pm25 : "--";
         document.getElementById("pm25-val").innerText = pmVal;
         
@@ -57,82 +52,38 @@ function onMessageArrived(msg) {
             stTxt.style.color = data.st_color;
         }
 
-        // Render Sensors
         document.getElementById("temp-val").innerText = data.temp !== null ? data.temp + "°C" : "--°C";
         document.getElementById("hum-val").innerText = data.hum !== null ? data.hum + "%" : "--%";
         document.getElementById("mq135-val").innerText = data.mq135 !== null ? data.mq135 : "--";
 
-        // Render Status Bars
         document.getElementById("fan-speed").innerText = data.f_mode || "--";
         document.getElementById("filter-val").innerText = (data.filter_pct || 0) + "%";
         document.getElementById("timer-val").innerText = data.o_timer || "OFF";
         document.getElementById("qtimer-val").innerText = data.q_timer || "OFF";
 
-        // Update Active Button UI
         document.querySelectorAll(".btn-mode").forEach(btn => btn.classList.remove("active"));
         if (data.c_mode) {
             const btn = document.getElementById("btn-" + data.c_mode);
             if (btn) btn.classList.add("active");
         }
 
-        // Save to History for Chart & CSV Export
+        // Automatic Alert Detector
+        if (data.pm25 > 50) addAlert("HAZARDOUS PM2.5 Level Detected! (" + data.pm25 + " µg/m³)", "danger");
+        if (data.mq135 > 600) addAlert("High Gas/VOCs Concentration Detected! (Raw: " + data.mq135 + ")", "warning");
+
+        // Realtime Chart Data Push
         if (data.pm25 !== null) {
-            const record = {
-                timestamp: new Date().toLocaleTimeString(),
-                pm25: data.pm25,
-                temp: data.temp,
-                hum: data.hum,
-                mq135: data.mq135
-            };
+            const record = { timestamp: new Date().toLocaleTimeString(), pm25: data.pm25, mq135: data.mq135, temp: data.temp, hum: data.hum };
             telemetryHistory.push(record);
-            if (telemetryHistory.length > 50) telemetryHistory.shift(); // Max 50 points
+            if (telemetryHistory.length > 30) telemetryHistory.shift();
             localStorage.setItem("telemetryHistory", JSON.stringify(telemetryHistory));
             updateChart(record);
         }
 
-    } catch (e) { console.error("Data Error:", e); }
+    } catch (e) { console.error(e); }
 }
 
-// =====================================
-// Commands & Actions
-// =====================================
-function sendControl(mode) {
-    if (client.isConnected()) {
-        const msg = new Paho.MQTT.Message(JSON.stringify({ mode: mode }));
-        msg.destinationName = topicCmd;
-        client.send(msg);
-    }
-}
-
-function resetFilter() {
-    if (confirm("Reset Filter Lifespan back to 100%?")) sendControl("RESET_FILTER");
-}
-
-function saveSettings(e) {
-    e.preventDefault();
-    const payload = {
-        sys_config: {
-            pm_med: document.getElementById("cfg-pm-med").value,
-            pm_high: document.getElementById("cfg-pm-high").value,
-            mq_med: document.getElementById("cfg-mq-med").value,
-            mq_high: document.getElementById("cfg-mq-high").value,
-            night_start: document.getElementById("cfg-night-start").value,
-            night_end: document.getElementById("cfg-night-end").value
-        },
-        timer: document.getElementById("cfg-timer").value || 0,
-        qtimer: document.getElementById("cfg-qtimer").value || 0
-    };
-    
-    const msg = new Paho.MQTT.Message(JSON.stringify(payload));
-    msg.destinationName = topicCmd;
-    client.send(msg);
-    closeModal();
-    alert("Settings Pushed to ESP32!");
-}
-
-// =====================================
-// Navigation & Chart Engine
-// =====================================
+// ================= NAVIGATION & CHART =================
 function switchTab(tab) {
     document.querySelectorAll(".nav-menu li").forEach(li => li.classList.remove("active"));
     document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active"));
@@ -140,10 +91,15 @@ function switchTab(tab) {
     if (tab === 'dashboard') {
         document.querySelectorAll(".nav-menu li")[0].classList.add("active");
         document.getElementById("view-dashboard").classList.add("active");
-    } else {
+        document.getElementById("page-title").innerText = "Air Quality Dashboard";
+    } else if (tab === 'alerts') {
         document.querySelectorAll(".nav-menu li")[1].classList.add("active");
-        document.getElementById("view-analytics").classList.add("active");
-        initChart();
+        document.getElementById("view-alerts").classList.add("active");
+        document.getElementById("page-title").innerText = "Hazard Incident Logs";
+    } else {
+        document.querySelectorAll(".nav-menu li")[2].classList.add("active");
+        document.getElementById("view-settings").classList.add("active");
+        document.getElementById("page-title").innerText = "System & Connectivity Settings";
     }
 }
 
@@ -156,7 +112,7 @@ function initChart() {
             labels: telemetryHistory.map(d => d.timestamp),
             datasets: [
                 { label: 'PM2.5 (µg/m³)', data: telemetryHistory.map(d => d.pm25), borderColor: '#00f0ff', tension: 0.3 },
-                { label: 'MQ135 Raw', data: telemetryHistory.map(d => d.mq135), borderColor: '#f59e0b', tension: 0.3 }
+                { label: 'MQ135 Gas', data: telemetryHistory.map(d => d.mq135), borderColor: '#f59e0b', tension: 0.3 }
             ]
         },
         options: { responsive: true, maintainAspectRatio: false }
@@ -168,7 +124,7 @@ function updateChart(rec) {
     chart.data.labels.push(rec.timestamp);
     chart.data.datasets[0].data.push(rec.pm25);
     chart.data.datasets[1].data.push(rec.mq135);
-    if (chart.data.labels.length > 50) {
+    if (chart.data.labels.length > 30) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
         chart.data.datasets[1].data.shift();
@@ -176,20 +132,107 @@ function updateChart(rec) {
     chart.update();
 }
 
-function exportToCSV() {
-    if (!telemetryHistory.length) return alert("No telemetry history available!");
-    let csv = "Timestamp,PM25,Temperature,Humidity,MQ135\n";
-    telemetryHistory.forEach(r => {
-        csv += `${r.timestamp},${r.pm25},${r.temp},${r.hum},${r.mq135}\n`;
+// ================= ALERTS & LOGS =================
+function addAlert(msg, type) {
+    const time = new Date().toLocaleTimeString();
+    if (alertLogs.length > 0 && alertLogs[0].msg === msg) return; // Prevent duplicate flood
+    alertLogs.unshift({ time, msg, type });
+    if (alertLogs.length > 20) alertLogs.pop();
+    localStorage.setItem("alertLogs", JSON.stringify(alertLogs));
+    renderAlerts();
+}
+
+function renderAlerts() {
+    const list = document.getElementById("alert-list");
+    document.getElementById("alert-badge").innerText = alertLogs.length;
+    list.innerHTML = alertLogs.length === 0 ? "<p style='color:#94a3b8;'>No hazards logged yet.</p>" : "";
+    
+    alertLogs.forEach(a => {
+        const li = document.createElement("li");
+        li.className = "alert-item " + (a.type === 'warning' ? 'warning' : '');
+        li.innerHTML = `<div><strong>${a.msg}</strong><br><small style="color:#94a3b8;">${a.time}</small></div><span>⚠️</span>`;
+        list.appendChild(li);
     });
+}
+
+function clearAlerts() { alertLogs = []; localStorage.removeItem("alertLogs"); renderAlerts(); }
+
+// ================= SETTINGS & COMMANDS =================
+function sendControl(mode) {
+    if (client.isConnected()) {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ mode: mode }));
+        msg.destinationName = topicCmd;
+        client.send(msg);
+    }
+}
+
+function resetFilter() { if (confirm("Reset Filter Lifespan?")) sendControl("RESET_FILTER"); }
+
+function saveHardwareSettings(e) {
+    e.preventDefault();
+    const payload = {
+        sys_config: {
+            pm_med: document.getElementById("cfg-pm-med").value,
+            pm_high: document.getElementById("cfg-pm-high").value,
+            mq_med: document.getElementById("cfg-mq-med").value,
+            mq_high: document.getElementById("cfg-mq-high").value,
+            night_start: document.getElementById("cfg-night-start").value,
+            night_end: document.getElementById("cfg-night-end").value
+        }
+    };
+    const msg = new Paho.MQTT.Message(JSON.stringify(payload));
+    msg.destinationName = topicCmd;
+    client.send(msg);
+    alert("Hardware Thresholds Pushed!");
+}
+
+function saveCloudSettings(e) {
+    e.preventDefault();
+    if (confirm("Changing Wi-Fi/Cloud will reboot ESP32. Continue?")) {
+        const payload = {
+            wifi_reconfig: {
+                ssid: document.getElementById("cfg-wifi-ssid").value,
+                pass: document.getElementById("cfg-wifi-pass").value,
+                m_host: document.getElementById("cfg-mqtt-host").value,
+                m_port: document.getElementById("cfg-mqtt-port").value,
+                m_user: document.getElementById("cfg-mqtt-user").value
+            }
+        };
+        const msg = new Paho.MQTT.Message(JSON.stringify(payload));
+        msg.destinationName = topicCmd;
+        client.send(msg);
+        alert("Provisioning Command Sent! ESP32 is rebooting...");
+    }
+}
+
+function exportToCSV() {
+    if (!telemetryHistory.length) return alert("No history!");
+    let csv = "Timestamp,PM25,MQ135,Temp,Humidity\n";
+    telemetryHistory.forEach(r => csv += `${r.timestamp},${r.pm25},${r.mq135},${r.temp},${r.hum}\n`);
     const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `AirPurifier_Telemetry_${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = window.URL.createObjectURL(blob);
+    a.download = `Purifier_Telemetry.csv`;
     a.click();
 }
 
-function openModal() { document.getElementById("settings-modal").classList.add("open"); }
-function closeModal() { document.getElementById("settings-modal").classList.remove("open"); }
 function clearChartHistory() { telemetryHistory = []; localStorage.removeItem("telemetryHistory"); if (chart) { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); } }
+
+// ฟังก์ชันตั้งเวลาปิดเครื่องแบบ Quick Preset
+function setTimer(hours) {
+    if (client.isConnected()) {
+        const payload = JSON.stringify({ timer: hours });
+        const msg = new Paho.MQTT.Message(payload);
+        msg.destinationName = topicCmd;
+        client.send(msg);
+        
+        // UI Feedback ทันที
+        if (hours > 0) {
+            document.getElementById("timer-val").innerText = hours + " Hours Set";
+        } else {
+            document.getElementById("timer-val").innerText = "OFF";
+        }
+    } else {
+        alert("MQTT Disconnected!");
+    }
+}
