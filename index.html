@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Air Purifier | Telemetry Dashboard</title>
+    <title>Smart Air Purifier | Cyberpunk Control</title>
     <link rel="stylesheet" href="style.css">
-    <!-- PWA Manifest -->
     <link rel="manifest" href="data:application/json,{%22name%22:%22AirPurifier%22,%22short_name%22:%22Purifier%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22}">
-    <!-- External Libraries -->
+    <!-- MQTT & Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -16,14 +15,12 @@
     <!-- Sidebar Menu -->
     <aside class="sidebar">
         <div>
-            <div class="logo">
-                <span class="logo-icon">⚙️</span> Smart Purifier
-            </div>
+            <div class="logo"><span class="logo-icon">⚙️</span> Purifier OS</div>
             <nav>
                 <ul class="nav-menu">
-                    <li class="active" onclick="switchTab('dashboard')">🏠 Dashboard</li>
-                    <li onclick="switchTab('analytics')">📊 Analytics & CSV</li>
-                    <li onclick="openModal()">⚙️ Threshold Settings</li>
+                    <li class="active" onclick="switchTab('dashboard')">🏠 Dashboard & Chart</li>
+                    <li onclick="switchTab('alerts')">⚠️ Hazard Logs <span id="alert-badge" class="badge-count">0</span></li>
+                    <li onclick="switchTab('settings')">⚙️ System Settings</li>
                 </ul>
             </nav>
         </div>
@@ -32,20 +29,19 @@
                 <span id="mqtt-dot" class="dot red"></span>
                 <span id="mqtt-status-text">Disconnected</span>
             </div>
-            <small id="broker-info">EMQX WSS :8084</small>
+            <small id="broker-info">EMQX Cloud WSS</small>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
+    <!-- Main Content -->
     <main class="main-content">
-        <!-- Header Bar -->
         <header class="header">
             <div>
-                <h1>Air Quality Telemetry</h1>
-                <p>Node ID: <code>ESP32-CORE-01</code></p>
+                <h1 id="page-title">Air Quality Dashboard</h1>
+                <p>Telemetry & Live Analytics</p>
             </div>
             <div class="header-right">
-                <button class="btn-export" onclick="exportToCSV()">📥 Export CSV History</button>
+                <button class="btn-export" onclick="exportToCSV()">📥 Export CSV</button>
                 <div class="time-box">
                     <small>ESP32 Clock</small>
                     <h3 id="esp-time">--:--:--</h3>
@@ -53,14 +49,14 @@
             </div>
         </header>
 
-        <!-- View 1: Dashboard Main Grid -->
+        <!-- ================= PAGE 1: DASHBOARD & CHART ================= -->
         <section id="view-dashboard" class="tab-view active">
             <div class="dashboard-grid">
-                <!-- PM2.5 Gauge Card -->
+                <!-- Gauge Card -->
                 <div class="card main-card">
                     <div class="card-header">
                         <span>PM2.5 CONCENTRATION</span>
-                        <span class="tooltip-icon" data-tip="ค่าฝุ่น PM2.5 (µg/m³) อ่านตรงจากเซ็นเซอร์ PMS7003">ⓘ</span>
+                        <span class="tooltip-icon" data-tip="ค่าฝุ่น PM2.5 (µg/m³)">ⓘ</span>
                     </div>
                     <div class="circle-progress" id="pm25-ring">
                         <h2 id="pm25-val">--</h2>
@@ -70,39 +66,19 @@
                     <p id="pm25-desc" class="sub-desc">Connecting to cloud broker...</p>
                 </div>
 
-                <!-- Side Telemetry Cards -->
+                <!-- Side Telemetry -->
                 <div class="side-cards">
                     <div class="card mini-card">
-                        <div class="card-header">
-                            <span>TEMPERATURE</span>
-                            <span class="tooltip-icon" data-tip="อุณหภูมิห้องจาก DHT11">ⓘ</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-value" id="temp-val">--°C</span>
-                            <span class="status-badge" id="temp-badge">--</span>
-                        </div>
+                        <div class="card-header"><span>TEMPERATURE</span><span class="tooltip-icon" data-tip="อุณหภูมิห้อง">ⓘ</span></div>
+                        <div class="data-row"><span class="data-value" id="temp-val">--°C</span><span class="status-badge" id="temp-badge">--</span></div>
                     </div>
-
                     <div class="card mini-card">
-                        <div class="card-header">
-                            <span>HUMIDITY</span>
-                            <span class="tooltip-icon" data-tip="ความชื้นสัมพัทธ์ในอากาศ">ⓘ</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-value" id="hum-val">--%</span>
-                            <span class="status-badge" id="hum-badge">--</span>
-                        </div>
+                        <div class="card-header"><span>HUMIDITY</span><span class="tooltip-icon" data-tip="ความชื้นสัมพัทธ์">ⓘ</span></div>
+                        <div class="data-row"><span class="data-value" id="hum-val">--%</span><span class="status-badge" id="hum-badge">--</span></div>
                     </div>
-
                     <div class="card mini-card">
-                        <div class="card-header">
-                            <span>VOCs & AIR GAS (MQ135)</span>
-                            <span class="tooltip-icon" data-tip="ค่าตรวจจับก๊าซพิษ กลิ่น ควัน และสารระเหยง่าย">ⓘ</span>
-                        </div>
-                        <div class="data-row">
-                            <span class="data-value" id="mq135-val">--</span>
-                            <span class="status-badge" id="mq135-badge">--</span>
-                        </div>
+                        <div class="card-header"><span>VOCs & AIR GAS (MQ135)</span><span class="tooltip-icon" data-tip="ค่าก๊าซพิษ ควัน และสารระเหย">ⓘ</span></div>
+                        <div class="data-row"><span class="data-value" id="mq135-val">--</span><span class="status-badge" id="mq135-badge">--</span></div>
                     </div>
                 </div>
 
@@ -110,7 +86,7 @@
                 <div class="control-panel card">
                     <div class="cp-header">
                         <h4>OPERATION MODE CONTROL</h4>
-                        <span class="tooltip-icon" data-tip="เลือกโหมดพัดลม หรือใช้ AUTO เพื่อปรับรอบตามฝุ่นและก๊าซ">ⓘ</span>
+                        <span class="tooltip-icon" data-tip="สลับโหมดพัดลม หรือใช้ AUTO">ⓘ</span>
                     </div>
                     <div class="btn-group">
                         <button class="btn-mode" id="btn-AUTO" onclick="sendControl('AUTO')">AUTO</button>
@@ -122,93 +98,118 @@
                 </div>
             </div>
 
-            <!-- Bottom Status Cards -->
-            <div class="bottom-grid">
-                <div class="card status-card">
-                    <h4>FAN RELAY STATUS</h4>
-                    <p id="fan-speed" class="highlight-cyan">--</p>
-                </div>
-                <div class="card status-card">
-                    <div class="card-header">
-                        <h4>FILTER HEALTH</h4>
-                        <span class="tooltip-icon" data-tip="คำนวณจากชั่วโมงทำงานจริงของแผ่นกรอง (1500 ชม.)">ⓘ</span>
-                    </div>
-                    <p id="filter-val">--%</p>
-                    <button class="btn-reset-filter" onclick="resetFilter()">Reset Filter</button>
-                </div>
-                <div class="card status-card">
-                    <h4>AUTO-OFF TIMER</h4>
-                    <p id="timer-val">OFF</p>
-                </div>
-                <div class="card status-card">
-                    <h4>QUIET TIMER</h4>
-                    <p id="qtimer-val">OFF</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- View 2: Analytics & Chart -->
-        <section id="view-analytics" class="tab-view">
+            <!-- Live Chart Card -->
             <div class="card chart-card">
                 <div class="card-header">
-                    <h3>📈 Real-time PM2.5 & MQ135 Chart</h3>
-                    <button class="btn-sm" onclick="clearChartHistory()">Clear Chart Data</button>
+                    <h3>📈 Real-time PM2.5 & MQ135 Telemetry</h3>
+                    <button class="btn-sm" onclick="clearChartHistory()">Clear Data</button>
                 </div>
                 <div class="chart-container">
                     <canvas id="realtimeChart"></canvas>
                 </div>
             </div>
+
+            <!-- Bottom Status Cards -->
+            <div class="bottom-grid" style="margin-top: 20px;">
+                <!-- แผง Quick Timer ในหน้า Dashboard -->
+<div class="card status-card">
+    <div class="card-header">
+        <h4>⏱️ QUICK AUTO-OFF TIMER</h4>
+        <span class="tooltip-icon" data-tip="กดเลือกเวลาปิดเครื่องอัตโนมัติได้ทันที">ⓘ</span>
+    </div>
+    <div class="timer-display">
+        <span id="timer-val" class="highlight-cyan">OFF</span>
+    </div>
+    <!-- ปุ่ม Preset กดง่ายในคลิกเดียว -->
+    <div class="preset-btn-group">
+        <button class="btn-preset" onclick="setTimer(1)">+1h</button>
+        <button class="btn-preset" onclick="setTimer(2)">+2h</button>
+        <button class="btn-preset" onclick="setTimer(4)">+4h</button>
+        <button class="btn-preset btn-cancel" onclick="setTimer(0)">Off</button>
+    </div>
+</div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 2: HAZARD LOGS & ALERTS ================= -->
+        <section id="view-alerts" class="tab-view">
+            <div class="card">
+                <div class="card-header">
+                    <h3>⚠️ Danger & Sensor Incident Logs</h3>
+                    <button class="btn-sm" onclick="clearAlerts()">Clear Logs</button>
+                </div>
+                <div class="alert-list-container">
+                    <ul id="alert-list" class="alert-list">
+                        <!-- Alert Items Dynamic Insert -->
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: SYSTEM SETTINGS ================= -->
+        <section id="view-settings" class="tab-view">
+            <div class="settings-grid">
+                <!-- Hardware Threshold Settings -->
+                <div class="card">
+                    <h3>⚙️ Sensor & Auto Mode Thresholds</h3>
+                    <p class="sub-desc">ปรับเกณฑ์การทำงานของเซ็นเซอร์และโหมดกลางคืน</p>
+                    <form onsubmit="saveHardwareSettings(event)" style="margin-top: 15px;">
+                        <div class="form-group">
+                            <label>PM2.5 Thresholds (µg/m³)</label>
+                            <div class="form-row">
+                                <input type="number" id="cfg-pm-med" placeholder="Med Speed" required>
+                                <input type="number" id="cfg-pm-high" placeholder="High Speed" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>MQ135 Gas Thresholds (Raw ADC)</label>
+                            <div class="form-row">
+                                <input type="number" id="cfg-mq-med" placeholder="Med Speed" required>
+                                <input type="number" id="cfg-mq-high" placeholder="High Speed" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Night Mode Lock (Hours 0-23)</label>
+                            <div class="form-row">
+                                <input type="number" id="cfg-night-start" placeholder="Start Hour" min="0" max="23" required>
+                                <input type="number" id="cfg-night-end" placeholder="End Hour" min="0" max="23" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-submit">Push Thresholds to ESP32</button>
+                    </form>
+                </div>
+
+                <!-- Cloud & Connectivity Settings -->
+                <div class="card">
+                    <h3>🌐 Cloud Broker & Remote Config</h3>
+                    <p class="sub-desc">จัดการการเชื่อมต่อ Wi-Fi และ EMQX Cloud Broker</p>
+                    <form onsubmit="saveCloudSettings(event)" style="margin-top: 15px;">
+                        <div class="form-group">
+                            <label>Target Wi-Fi SSID</label>
+                            <input type="text" id="cfg-wifi-ssid" placeholder="Wi-Fi Name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Target Wi-Fi Password</label>
+                            <input type="password" id="cfg-wifi-pass" placeholder="Wi-Fi Password">
+                        </div>
+                        <div class="form-group">
+                            <label>MQTT Cloud Host</label>
+                            <input type="text" id="cfg-mqtt-host" placeholder="Broker Hostname" required>
+                        </div>
+                        <div class="form-group">
+                            <label>MQTT Port / User</label>
+                            <div class="form-row">
+                                <input type="number" id="cfg-mqtt-port" placeholder="Port (8883)" required>
+                                <input type="text" id="cfg-mqtt-user" placeholder="Username">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-submit btn-warning">Re-provision ESP32 Wi-Fi / Cloud</button>
+                    </form>
+                </div>
+            </div>
         </section>
     </main>
 
-    <!-- Modal Form for Threshold Settings -->
-    <div id="settings-modal" class="modal-backdrop">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>⚙️ Purifier Thresholds & Timers</h3>
-                <span class="close-modal" onclick="closeModal()">&times;</span>
-            </div>
-            <form id="settings-form" onsubmit="saveSettings(event)">
-                <div class="form-group">
-                    <label>PM2.5 Thresholds (µg/m³)</label>
-                    <div class="form-row">
-                        <input type="number" id="cfg-pm-med" placeholder="Med (Default 15)" required>
-                        <input type="number" id="cfg-pm-high" placeholder="High (Default 35)" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>MQ135 Gas Thresholds (Raw ADC)</label>
-                    <div class="form-row">
-                        <input type="number" id="cfg-mq-med" placeholder="Med (Default 300)" required>
-                        <input type="number" id="cfg-mq-high" placeholder="High (Default 600)" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Night Mode Hours (LOW Speed Lock)</label>
-                    <div class="form-row">
-                        <input type="number" id="cfg-night-start" placeholder="Start Hour (e.g. 22)" min="0" max="23" required>
-                        <input type="number" id="cfg-night-end" placeholder="End Hour (e.g. 6)" min="0" max="23" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Set Timers (Hours)</label>
-                    <div class="form-row">
-                        <input type="number" id="cfg-timer" placeholder="Auto-OFF (0 = Disable)" min="0" max="24">
-                        <input type="number" id="cfg-qtimer" placeholder="Quiet LOW (0 = Disable)" min="0" max="24">
-                    </div>
-                </div>
-                <button type="submit" class="btn-submit">SAVE & PUSH TO ESP32</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Scripts -->
     <script src="app.js"></script>
-    <script>
-        // Register Service Worker for PWA Support
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(() => {});
-        }
-    </script>
 </body>
 </html>
