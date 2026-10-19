@@ -7,6 +7,7 @@ const topicCmd = "air_purifier/cmd";
 let chart = null;
 let telemetryHistory = JSON.parse(localStorage.getItem("telemetryHistory") || "[]");
 let alertLogs = JSON.parse(localStorage.getItem("alertLogs") || "[]");
+let configSynced = false; // ตัวแปรเช็คว่าเคยดึงค่า Config จากบอร์ดหรือยัง
 
 // ================= THEME SWITCHER LOGIC =================
 function initTheme() {
@@ -14,7 +15,8 @@ function initTheme() {
     if (savedTheme === "light") {
         document.body.classList.add("light-theme");
         document.getElementById("theme-icon").innerText = "☀️";
-        document.getElementById("theme-text").innerText = "Light Mode";
+        const textEl = document.getElementById("theme-text");
+        if (textEl) textEl.innerText = "Light Mode";
     }
 }
 initTheme();
@@ -25,7 +27,8 @@ function toggleTheme() {
     localStorage.setItem("appTheme", isLight ? "light" : "dark");
     
     document.getElementById("theme-icon").innerText = isLight ? "☀️" : "🌙";
-    document.getElementById("theme-text").innerText = isLight ? "Light Mode" : "Dark Mode";
+    const textEl = document.getElementById("theme-text");
+    if (textEl) textEl.innerText = isLight ? "Light Mode" : "Dark Mode";
 }
 
 // ================= MQTT ENGINE =================
@@ -86,6 +89,24 @@ function onMessageArrived(msg) {
         if (data.c_mode) {
             const btn = document.getElementById("btn-" + data.c_mode);
             if (btn) btn.classList.add("active");
+        }
+
+        // ================= CONFIG AUTO-SYNC =================
+        // ดึงค่า Config จาก ESP32 มาใส่ในฟอร์มหน้า Settings (ทำแค่ครั้งแรก หรือถ้า User ไม่ได้กำลังพิมพ์อยู่)
+        if (data.cfg && (!configSynced || document.activeElement.tagName !== "INPUT")) {
+            document.getElementById("cfg-pm-med").value = data.cfg.p_m;
+            document.getElementById("cfg-pm-high").value = data.cfg.p_h;
+            document.getElementById("cfg-mq-med").value = data.cfg.m_m;
+            document.getElementById("cfg-mq-high").value = data.cfg.m_h;
+            document.getElementById("cfg-night-start").value = data.cfg.n_s;
+            document.getElementById("cfg-night-end").value = data.cfg.n_e;
+            
+            configSynced = true;
+            const statusEl = document.getElementById("config-status");
+            if (statusEl) {
+                statusEl.innerText = "(Synced with ESP32)";
+                statusEl.style.color = "var(--accent-green)";
+            }
         }
 
         if (data.pm25 > 50) addAlert("HAZARDOUS PM2.5 Level Detected! (" + data.pm25 + " µg/m³)", "danger");
@@ -210,7 +231,12 @@ function saveHardwareSettings(e) {
     const msg = new Paho.MQTT.Message(JSON.stringify(payload));
     msg.destinationName = topicCmd;
     client.send(msg);
-    alert("Hardware Thresholds Pushed!");
+    
+    const statusEl = document.getElementById("config-status");
+    if(statusEl) {
+        statusEl.innerText = "(Saved & Pushed to ESP32)";
+        statusEl.style.color = "var(--accent-cyan)";
+    }
 }
 
 function saveCloudSettings(e) {
