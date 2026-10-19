@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Air Purifier Cloud OS Pro</title>
-    <!-- ไลบรารี Paho MQTT และ Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -17,21 +16,33 @@
         .wrap { width: 100%; max-width: 480px; }
         .h1 { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .cloud-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(0, 240, 255, 0.15); color: var(--cyan); border: 1px solid var(--cyan); }
+        
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; backdrop-filter: blur(10px); transition: border-color 0.4s ease; }
         .pm-val { font-size: 52px; font-weight: bold; text-align: center; color: var(--cyan); margin: 4px 0; transition: color 0.4s ease; }
         .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid transparent; }
+        
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-        .box { background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px; text-align: center; }
-        .lbl { font-size: 10px; color: var(--sub); }
-        .val { font-size: 15px; font-weight: bold; color: var(--text); }
+        .box { background: rgba(0,0,0,0.25); padding: 10px; border-radius: 10px; text-align: center; position: relative; }
+        .lbl { font-size: 10px; color: var(--sub); display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .val { font-size: 15px; font-weight: bold; color: var(--text); margin-top: 4px; }
+        .error-val { color: var(--red) !important; font-size: 12px !important; }
+        
+        /* ---------------- TOOLTIP CSS ---------------- */
+        .tooltip { position: relative; display: inline-flex; align-items: center; cursor: help; color: #fff; background: rgba(255,255,255,0.1); border-radius: 50%; width: 14px; height: 14px; justify-content: center; font-size: 9px; font-weight: bold; }
+        .tooltip .tooltiptext { visibility: hidden; width: 220px; background-color: rgba(11, 15, 25, 0.98); color: #fff; text-align: left; border-radius: 8px; padding: 10px; position: absolute; z-index: 10; bottom: 150%; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: normal; border: 1px solid var(--cyan); opacity: 0; transition: opacity 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.5); line-height: 1.5; pointer-events: none; }
+        .tooltip .tooltiptext::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: var(--cyan) transparent transparent transparent; }
+        .tooltip:hover .tooltiptext, .tooltip:active .tooltiptext { visibility: visible; opacity: 1; }
+        
         .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
         .btn-grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
-        .btn { display: block; padding: 12px 0; border-radius: 10px; font-size: 12px; font-weight: bold; color: var(--sub); background: rgba(255,255,255,0.04); border: 1px solid var(--border); text-align: center; cursor: pointer; user-select: none; transition: all 0.2s; }
+        .btn { display: flex; justify-content: center; align-items: center; padding: 10px 0; border-radius: 10px; font-size: 11px; font-weight: bold; color: var(--sub); background: rgba(255,255,255,0.04); border: 1px solid var(--border); cursor: pointer; user-select: none; transition: all 0.2s; gap: 5px; }
         .btn:active { transform: scale(0.95); }
-        .active { background: rgba(0, 240, 255, 0.2) !important; color: #fff !important; border-color: var(--cyan) !important; }
+        .active { background: rgba(0, 240, 255, 0.2) !important; color: #fff !important; border-color: var(--cyan) !important; box-shadow: 0 0 12px rgba(0,240,255,0.3); }
+        
         .bar { background: rgba(255,255,255,0.1); border-radius: 8px; height: 8px; width: 100%; margin-top: 6px; overflow: hidden; }
         .fill { background: var(--cyan); height: 100%; transition: width 0.4s, background-color 0.4s; }
         .chart-container { position: relative; height: 160px; width: 100%; margin-top: 10px; }
+        
         .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--red); margin-right: 4px; }
         .online { background: var(--green) !important; box-shadow: 0 0 8px var(--green); }
     </style>
@@ -46,23 +57,59 @@
         <!-- Main Sensor Card -->
         <div class="card" id="card-main">
             <div style="text-align:center;">
-                <div class="lbl">PM2.5 CONCENTRATION</div>
+                <div class="lbl">
+                    PM2.5 CONCENTRATION
+                    <span class="tooltip">i
+                        <span class="tooltiptext">
+                            <b style="color:var(--cyan);">ดัชนีฝุ่นละอองขนาดเล็ก (µg/m³)</b><br>
+                            🟢 00 - 15 : อากาศดีเยี่ยม<br>
+                            🟡 16 - 35 : คุณภาพปานกลาง<br>
+                            🟠 36 - 50 : เริ่มมีผลกระทบต่อสุขภาพ<br>
+                            🔴 > 50 : อันตราย ควรหลีกเลี่ยง
+                        </span>
+                    </span>
+                </div>
                 <div class="pm-val" id="pm">-- <span style="font-size:16px;">&mu;g/m&sup3;</span></div>
                 <div class="badge" id="badge">WAITING DATA...</div>
             </div>
             <div class="grid2">
-                <div class="box"><div class="lbl">TEMP</div><div class="val" id="temp">-- &deg;C</div></div>
-                <div class="box"><div class="lbl">HUMIDITY</div><div class="val" id="hum">-- %RH</div></div>
-                <div class="box"><div class="lbl">MQ135 RAW (GAS)</div><div class="val" id="mq">--</div></div>
-                <div class="box"><div class="lbl">SERVER TIME</div><div class="val" id="time">--:--:--</div></div>
+                <div class="box">
+                    <div class="lbl">TEMP 
+                        <span class="tooltip">i<span class="tooltiptext">อุณหภูมิห้องปัจจุบัน วัดโดยเซนเซอร์ DHT11</span></span>
+                    </div>
+                    <div class="val" id="temp">-- &deg;C</div>
+                </div>
+                <div class="box">
+                    <div class="lbl">HUMIDITY</div>
+                    <div class="val" id="hum">-- %RH</div>
+                </div>
+                <div class="box">
+                    <div class="lbl">MQ135 (GAS) 
+                        <span class="tooltip">i
+                            <span class="tooltiptext">
+                                <b style="color:var(--cyan);">เซนเซอร์ตรวจจับควันและแก๊ส (VOCs)</b><br>
+                                💨 < 300 : สภาพอากาศปกติ<br>
+                                ⚠️ > 600 : มีควันหรือกลิ่นอับสะสม ระบบ AUTO จะสั่งพัดลมหมุนแรงขึ้น
+                            </span>
+                        </span>
+                    </div>
+                    <div class="val" id="mq">--</div>
+                </div>
+                <div class="box">
+                    <div class="lbl">SERVER TIME</div>
+                    <div class="val" id="time">--:--:--</div>
+                </div>
             </div>
         </div>
 
         <!-- Chart.js Data Trend -->
         <div class="card">
-            <div style="font-size:12px; font-weight:bold; color:var(--cyan); display:flex; justify-content:space-between;">
+            <div style="font-size:12px; font-weight:bold; color:var(--cyan); display:flex; justify-content:space-between; align-items:center;">
                 <span>📈 Real-time Trend</span>
-                <span style="font-size:10px; color:var(--sub);">Live Sync</span>
+                <!-- ปุ่ม Export CSV -->
+                <div class="btn" style="padding: 4px 8px; font-size: 9px; margin: 0; width: auto;" onclick="exportCSV()">
+                    📥 EXPORT CSV
+                </div>
             </div>
             <div class="chart-container">
                 <canvas id="pmChart"></canvas>
@@ -72,7 +119,15 @@
         <!-- Filter Health -->
         <div class="card">
             <div style="display:flex; justify-content:space-between; font-size:12px;">
-                <span>Filter Lifespan</span>
+                <span style="display:flex; align-items:center; gap:4px;">
+                    Filter Lifespan
+                    <span class="tooltip" style="font-size:8px;">i
+                        <span class="tooltiptext">
+                            คำนวณจากชั่วโมงการทำงานสะสมของพัดลม (Max: 1,500 ชม.)<br>
+                            หากต่ำกว่า 10% แถบจะเปลี่ยนเป็นสีแดง
+                        </span>
+                    </span>
+                </span>
                 <span style="font-weight:bold; color:var(--cyan);" id="fl-txt">100%</span>
             </div>
             <div class="bar"><div class="fill" id="fl-fill"></div></div>
@@ -95,7 +150,7 @@
     </div>
 
     <script>
-        // CONFIG MQTT
+        // CONFIG MQTT (อย่าลืมเปลี่ยนเป็นข้อมูลของคุณเอง)
         const MQTT_HOST = "o1c1f1d1.ala.asia-southeast1.emqxsl.com"; 
         const MQTT_PORT = 8084;                                     
         const MQTT_USER = "purifier_admin";                         
@@ -184,22 +239,43 @@
             if(confirm("Confirm reset Filter Lifespan?")) sendCmd("mode", "RESET_FILTER");
         }
 
+        // ฟังก์ชัน Export CSV
+        function exportCSV() {
+            if (timeHistory.length === 0) return alert("ไม่มีข้อมูลประวัติให้บันทึก");
+            let csvContent = "data:text/csv;charset=utf-8,Time,PM2.5_ug_m3\n";
+            for (let i = 0; i < timeHistory.length; i++) {
+                csvContent += timeHistory[i] + "," + pmHistory[i] + "\n";
+            }
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "AirPurifier_DataLog.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function updateUI(d) {
-            // Dynamic Color Alert
             let themeColor = d.st_color;
             document.getElementById('pm').style.color = themeColor;
             document.getElementById('card-main').style.borderColor = themeColor;
 
-            document.getElementById('pm').innerHTML = (d.pm25 !== null ? d.pm25 : '--') + ' <span style="font-size:16px; color:#fff;">&mu;g/m&sup3;</span>';
+            // Sensor Health Check (หากค่าเป็น null ให้ขึ้นเตือน)
+            if (d.pm25 !== null) {
+                document.getElementById('pm').innerHTML = d.pm25 + ' <span style="font-size:16px; color:#fff;">&mu;g/m&sup3;</span>';
+            } else {
+                document.getElementById('pm').innerHTML = '<span style="font-size:24px; color:var(--red);">⚠️ SENSOR ERROR</span>';
+            }
+
             let b = document.getElementById('badge');
             b.innerText = d.st_text; b.style.color = themeColor; b.style.borderColor = themeColor;
 
-            document.getElementById('temp').innerText = (d.temp !== null ? d.temp : '--') + ' °C';
-            document.getElementById('hum').innerText = (d.hum !== null ? d.hum : '--') + ' %RH';
-            document.getElementById('mq').innerText = (d.mq135 !== null ? d.mq135 : '--');
+            // DHT & MQ135 Status Check
+            document.getElementById('temp').innerHTML = (d.temp !== null) ? d.temp + ' &deg;C' : '<span class="error-val">⚠️ ERROR</span>';
+            document.getElementById('hum').innerHTML  = (d.hum !== null) ? d.hum + ' %RH' : '<span class="error-val">⚠️ ERROR</span>';
+            document.getElementById('mq').innerHTML   = (d.mq135 !== null) ? d.mq135 : '<span class="error-val">⚠️ ERROR</span>';
             document.getElementById('time').innerText = d.time;
 
-            // Filter Health Alert
             document.getElementById('fl-txt').innerText = d.filter_pct + '% (' + d.filter_hrs + 'h)';
             let fillBar = document.getElementById('fl-fill');
             fillBar.style.width = d.filter_pct + '%';
@@ -217,19 +293,18 @@
                 }
             });
 
-            // Update Chart & Local Storage
+            // Update Chart
             if(d.pm25 !== null && d.time) {
                 let shortTime = d.time.substring(0, 5);
-                // Prevent duplicate time entry (syncs every 2s, but chart looks better updated every minute/change)
                 if (timeHistory.length === 0 || timeHistory[timeHistory.length - 1] !== shortTime) {
-                    if(pmHistory.length >= 20) { pmHistory.shift(); timeHistory.shift(); }
+                    if(pmHistory.length >= 25) { pmHistory.shift(); timeHistory.shift(); }
                     pmHistory.push(d.pm25);
                     timeHistory.push(shortTime);
                     
                     localStorage.setItem('pmHistory', JSON.stringify(pmHistory));
                     localStorage.setItem('timeHistory', JSON.stringify(timeHistory));
 
-                    pmChart.data.datasets[0].borderColor = themeColor; // Line color matches status
+                    pmChart.data.datasets[0].borderColor = themeColor;
                     pmChart.update();
                 }
             }
