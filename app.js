@@ -8,6 +8,27 @@ let chart = null;
 let telemetryHistory = JSON.parse(localStorage.getItem("telemetryHistory") || "[]");
 let alertLogs = JSON.parse(localStorage.getItem("alertLogs") || "[]");
 
+// ================= THEME SWITCHER LOGIC =================
+function initTheme() {
+    const savedTheme = localStorage.getItem("appTheme") || "dark";
+    if (savedTheme === "light") {
+        document.body.classList.add("light-theme");
+        document.getElementById("theme-icon").innerText = "☀️";
+        document.getElementById("theme-text").innerText = "Light Mode";
+    }
+}
+initTheme();
+
+function toggleTheme() {
+    document.body.classList.toggle("light-theme");
+    const isLight = document.body.classList.contains("light-theme");
+    localStorage.setItem("appTheme", isLight ? "light" : "dark");
+    
+    document.getElementById("theme-icon").innerText = isLight ? "☀️" : "🌙";
+    document.getElementById("theme-text").innerText = isLight ? "Light Mode" : "Dark Mode";
+}
+
+// ================= MQTT ENGINE =================
 const client = new Paho.MQTT.Client(broker, port, clientId);
 client.onConnectionLost = onConnectionLost;
 client.onMessageArrived = onMessageArrived;
@@ -67,11 +88,9 @@ function onMessageArrived(msg) {
             if (btn) btn.classList.add("active");
         }
 
-        // Automatic Alert Detector
         if (data.pm25 > 50) addAlert("HAZARDOUS PM2.5 Level Detected! (" + data.pm25 + " µg/m³)", "danger");
         if (data.mq135 > 600) addAlert("High Gas/VOCs Concentration Detected! (Raw: " + data.mq135 + ")", "warning");
 
-        // Realtime Chart Data Push
         if (data.pm25 !== null) {
             const record = { timestamp: new Date().toLocaleTimeString(), pm25: data.pm25, mq135: data.mq135, temp: data.temp, hum: data.hum };
             telemetryHistory.push(record);
@@ -132,10 +151,10 @@ function updateChart(rec) {
     chart.update();
 }
 
-// ================= ALERTS & LOGS =================
+// ================= ALERTS, TIMER & SETTINGS =================
 function addAlert(msg, type) {
     const time = new Date().toLocaleTimeString();
-    if (alertLogs.length > 0 && alertLogs[0].msg === msg) return; // Prevent duplicate flood
+    if (alertLogs.length > 0 && alertLogs[0].msg === msg) return;
     alertLogs.unshift({ time, msg, type });
     if (alertLogs.length > 20) alertLogs.pop();
     localStorage.setItem("alertLogs", JSON.stringify(alertLogs));
@@ -145,24 +164,32 @@ function addAlert(msg, type) {
 function renderAlerts() {
     const list = document.getElementById("alert-list");
     document.getElementById("alert-badge").innerText = alertLogs.length;
-    list.innerHTML = alertLogs.length === 0 ? "<p style='color:#94a3b8;'>No hazards logged yet.</p>" : "";
+    list.innerHTML = alertLogs.length === 0 ? "<p style='color:var(--text-muted);'>No hazards logged yet.</p>" : "";
     
     alertLogs.forEach(a => {
         const li = document.createElement("li");
         li.className = "alert-item " + (a.type === 'warning' ? 'warning' : '');
-        li.innerHTML = `<div><strong>${a.msg}</strong><br><small style="color:#94a3b8;">${a.time}</small></div><span>⚠️</span>`;
+        li.innerHTML = `<div><strong>${a.msg}</strong><br><small style="color:var(--text-muted);">${a.time}</small></div><span>⚠️</span>`;
         list.appendChild(li);
     });
 }
 
 function clearAlerts() { alertLogs = []; localStorage.removeItem("alertLogs"); renderAlerts(); }
 
-// ================= SETTINGS & COMMANDS =================
 function sendControl(mode) {
     if (client.isConnected()) {
         const msg = new Paho.MQTT.Message(JSON.stringify({ mode: mode }));
         msg.destinationName = topicCmd;
         client.send(msg);
+    }
+}
+
+function setTimer(hours) {
+    if (client.isConnected()) {
+        const msg = new Paho.MQTT.Message(JSON.stringify({ timer: hours }));
+        msg.destinationName = topicCmd;
+        client.send(msg);
+        document.getElementById("timer-val").innerText = hours > 0 ? hours + " Hours Set" : "OFF";
     }
 }
 
@@ -217,22 +244,3 @@ function exportToCSV() {
 }
 
 function clearChartHistory() { telemetryHistory = []; localStorage.removeItem("telemetryHistory"); if (chart) { chart.data.labels = []; chart.data.datasets[0].data = []; chart.update(); } }
-
-// ฟังก์ชันตั้งเวลาปิดเครื่องแบบ Quick Preset
-function setTimer(hours) {
-    if (client.isConnected()) {
-        const payload = JSON.stringify({ timer: hours });
-        const msg = new Paho.MQTT.Message(payload);
-        msg.destinationName = topicCmd;
-        client.send(msg);
-        
-        // UI Feedback ทันที
-        if (hours > 0) {
-            document.getElementById("timer-val").innerText = hours + " Hours Set";
-        } else {
-            document.getElementById("timer-val").innerText = "OFF";
-        }
-    } else {
-        alert("MQTT Disconnected!");
-    }
-}
