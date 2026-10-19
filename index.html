@@ -231,4 +231,69 @@
         function exportCSV() {
             if (timeHistory.length === 0) return alert("ไม่มีข้อมูลประวัติให้บันทึก");
             let csvContent = "data:text/csv;charset=utf-8,Time,PM2.5_ug_m3\n";
-            for (let i = 0; i < timeHistory.
+            for (let i = 0; i < timeHistory.length; i++) {
+                csvContent += timeHistory[i] + "," + pmHistory[i] + "\n";
+            }
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "AirPurifier_DataLog.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function updateUI(d) {
+            let themeColor = d.st_color;
+            document.getElementById('pm').style.color = themeColor;
+            document.getElementById('card-main').style.borderColor = themeColor;
+
+            if (d.pm25 !== null) {
+                document.getElementById('pm').innerHTML = d.pm25 + ' <span style="font-size:16px; color:#fff;">&mu;g/m&sup3;</span>';
+            } else {
+                document.getElementById('pm').innerHTML = '<span style="font-size:24px; color:var(--red);">⚠️ SENSOR ERROR</span>';
+            }
+
+            let b = document.getElementById('badge');
+            b.innerText = d.st_text; b.style.color = themeColor; b.style.borderColor = themeColor;
+
+            document.getElementById('temp').innerHTML = (d.temp !== null) ? d.temp + ' &deg;C' : '<span class="error-val">⚠️ ERROR</span>';
+            document.getElementById('hum').innerHTML  = (d.hum !== null) ? d.hum + ' %RH' : '<span class="error-val">⚠️ ERROR</span>';
+            document.getElementById('mq').innerHTML   = (d.mq135 !== null) ? d.mq135 : '<span class="error-val">⚠️ ERROR</span>';
+            document.getElementById('time').innerText = d.time;
+
+            // ดึงค่าเวลานับถอยหลังมาจากบอร์ด ESP32
+            if(d.o_timer) {
+                let ot = document.getElementById('o-timer');
+                ot.innerText = d.o_timer;
+                if(d.o_timer !== "OFF") ot.style.color = "var(--green)";
+                else ot.style.color = "var(--yellow)";
+            }
+
+            document.getElementById('c-mode').innerText = d.c_mode;
+            document.getElementById('f-mode').innerText = d.f_mode;
+
+            ['AUTO', 'HIGH', 'MED', 'LOW', 'OFF'].forEach(m => {
+                let btn = document.getElementById('btn-' + m);
+                if(btn) {
+                    if(d.c_mode === m) btn.classList.add('active');
+                    else btn.classList.remove('active');
+                }
+            });
+
+            if(d.pm25 !== null && d.time) {
+                let shortTime = d.time.substring(0, 5);
+                if (timeHistory.length === 0 || timeHistory[timeHistory.length - 1] !== shortTime) {
+                    if(pmHistory.length >= 25) { pmHistory.shift(); timeHistory.shift(); }
+                    pmHistory.push(d.pm25);
+                    timeHistory.push(shortTime);
+                    localStorage.setItem('pmHistory', JSON.stringify(pmHistory));
+                    localStorage.setItem('timeHistory', JSON.stringify(timeHistory));
+                    pmChart.data.datasets[0].borderColor = themeColor;
+                    pmChart.update();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
