@@ -1,242 +1,756 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smart Air Purifier | Cyberpunk Control</title>
+    <meta name="theme-color" content="#0b0f19">
+    <title>AuraFlow OS | Smart Air Purifier Dashboard</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Prompt for Thai -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="data:application/json,{%22name%22:%22AirPurifier%22,%22short_name%22:%22Purifier%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22}">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="data:application/json,{%22name%22:%22AuraFlow%20Smart%20Purifier%22,%22short_name%22:%22AuraFlow%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22#0b0f19%22,%22theme_color%22:%22#0ea5e9%22}">
+    
     <!-- MQTT & Chart.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body class="dark-theme">
 
-    <!-- Sidebar Menu -->
-    <aside class="sidebar">
-        <div class="sidebar-top">
-            <div class="logo"><span class="logo-icon">⚙️</span> Purifier OS</div>
-            
-            <div class="theme-toggle-container">
-                <button id="theme-toggle-btn" class="theme-btn" onclick="toggleTheme()">
-                    <span id="theme-icon">🌙</span> <span id="theme-text" class="hide-mobile">Dark Mode</span>
-                </button>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Confirm Modal -->
+    <div id="custom-modal" class="modal-backdrop">
+        <div class="modal-box">
+            <div class="modal-icon" id="modal-icon">⚠️</div>
+            <h3 id="modal-title">ยืนยันการทำรายการ</h3>
+            <p id="modal-desc">คุณต้องการดำเนินการนี้ใช่หรือไม่?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="modal-btn-cancel">ยกเลิก</button>
+                <button type="button" class="btn-primary" id="modal-btn-confirm">ตกลง</button>
             </div>
         </div>
+    </div>
 
-        <nav>
-            <ul class="nav-menu">
-                <li class="active" onclick="switchTab('dashboard')"><span>🏠</span> <span class="nav-text">Dashboard</span></li>
-                <li onclick="switchTab('alerts')"><span>⚠️</span> <span class="nav-text">Logs</span> <span id="alert-badge" class="badge-count">0</span></li>
-                <li onclick="switchTab('settings')"><span>⚙️</span> <span class="nav-text">Settings</span></li>
-            </ul>
-        </nav>
+    <!-- App Layout Container -->
+    <div class="app-container">
 
-        <div class="device-status-card hide-mobile">
-            <div class="status-indicator">
-                <span id="mqtt-dot" class="dot red"></span>
-                <span id="mqtt-status-text">Disconnected</span>
-            </div>
-            <small id="broker-info">EMQX Cloud WSS</small>
-        </div>
-    </aside>
+        <!-- ================= SIDEBAR ================= -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-top">
+                <div class="brand">
+                    <div class="brand-icon-wrapper">
+                        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+                            <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
+                            <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
+                        </svg>
+                    </div>
+                    <div class="brand-info">
+                        <span class="brand-title">AURAFLOW</span>
+                        <span class="brand-subtitle">Smart Purifier OS</span>
+                    </div>
+                </div>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <header class="header">
-            <div>
-                <h1 id="page-title">Air Quality Dashboard</h1>
-                <p>Telemetry & Live Analytics</p>
-            </div>
-            <div class="header-right">
-                <button class="btn-export" onclick="exportToCSV()">📥 <span class="hide-mobile">Export CSV</span></button>
-                <div class="time-box">
-                    <small>ESP32 Clock</small>
-                    <h3 id="esp-time">--:--:--</h3>
+                <div class="theme-quick-toggle">
+                    <button id="theme-toggle-btn" class="theme-btn" onclick="toggleTheme()" title="เปลี่ยนธีม สว่าง/มืด" aria-label="สลับธีม">
+                        <span id="theme-icon" class="theme-icon-slot">
+                            <!-- SVG Sun/Moon handled in script -->
+                        </span>
+                        <span id="theme-text" class="theme-label">Dark Mode</span>
+                    </button>
                 </div>
             </div>
-        </header>
 
-        <!-- ================= PAGE 1: DASHBOARD ================= -->
-        <section id="view-dashboard" class="tab-view active">
-            <div class="dashboard-grid">
-                <!-- Gauge Card -->
-                <div class="card main-card">
-                    <div class="card-header">
-                        <span>PM2.5 CONCENTRATION</span>
-                        <div class="tooltip-container">
-                            <span class="tooltip-icon">ⓘ</span>
-                            <div class="tooltip-text">ค่าความเข้มข้นฝุ่น PM2.5 (µg/m³)</div>
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <span class="nav-section-label">เมนูควบคุม</span>
+                <ul class="nav-menu">
+                    <li class="nav-item active" onclick="switchTab('dashboard')" id="nav-dashboard">
+                        <div class="nav-icon-title">
+                            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect width="7" height="9" x="3" y="3" rx="1"/>
+                                <rect width="7" height="5" x="14" y="3" rx="1"/>
+                                <rect width="7" height="9" x="14" y="12" rx="1"/>
+                                <rect width="7" height="5" x="3" y="16" rx="1"/>
+                            </svg>
+                            <span class="nav-text">แดชบอร์ดหลัก</span>
+                        </div>
+                    </li>
+                    <li class="nav-item" onclick="switchTab('alerts')" id="nav-alerts">
+                        <div class="nav-icon-title">
+                            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                            <span class="nav-text">บันทึกเตือนภัย</span>
+                        </div>
+                        <span id="alert-badge" class="badge-count">0</span>
+                    </li>
+                    <li class="nav-item" onclick="switchTab('settings')" id="nav-settings">
+                        <div class="nav-icon-title">
+                            <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                            <span class="nav-text">ตั้งค่าระบบ</span>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Device Connection Card -->
+            <div class="sidebar-footer">
+                <div class="device-status-card">
+                    <div class="status-indicator">
+                        <span id="mqtt-dot" class="dot red"></span>
+                        <div class="status-texts">
+                            <span id="mqtt-status-text" class="status-title">กำลังเชื่อมต่อ...</span>
+                            <span id="broker-info" class="status-sub">EMQX WSS Broker</span>
                         </div>
                     </div>
-                    <div class="circle-progress" id="pm25-ring">
-                        <h2 id="pm25-val">--</h2>
-                        <span>µg/m³</span>
+                    <button class="btn-demo-mode" id="btn-toggle-demo" onclick="toggleDemoMode()" title="เปิดโหมดจำลองเมื่อไม่มีบอร์ดต่ออยู่">
+                        <span class="demo-sparkle">✨</span> <span id="demo-btn-text">โหมดจำลอง (Demo)</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ================= MAIN CONTENT ================= -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="header">
+                <div class="header-titles">
+                    <div class="header-breadcrumbs">
+                        <span class="breadcrumb-app">AuraFlow Pro</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span class="breadcrumb-current" id="header-breadcrumb">Dashboard</span>
                     </div>
-                    <h3 id="pm25-status">Initializing...</h3>
-                    <p id="pm25-desc" class="sub-desc">Connecting to cloud broker...</p>
+                    <h1 id="page-title">ระบบควบคุมคุณภาพอากาศ</h1>
+                    <p class="page-subtitle" id="page-subtitle">แสดงข้อมูลโทรมาตรและสั่งงานเครื่องฟอกอากาศแบบเรียลไทม์</p>
                 </div>
 
-                <!-- Side Telemetry -->
-                <div class="side-cards">
-                    <div class="card mini-card">
+                <div class="header-right">
+                    <!-- Demo Mode Indicator Tag -->
+                    <div id="demo-indicator" class="demo-tag" style="display: none;">
+                        <span class="demo-pulse"></span>
+                        <span>กำลังจำลองข้อมูล (Demo Mode)</span>
+                    </div>
+
+                    <!-- ESP32 Hardware Clock Card -->
+                    <div class="time-box">
+                        <div class="time-header">
+                            <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>ESP32 Clock</span>
+                        </div>
+                        <h3 id="esp-time">--:--:--</h3>
+                    </div>
+
+                    <!-- Export CSV Button -->
+                    <button class="btn-export" onclick="exportToCSV()" title="ดาวน์โหลดข้อมูลย้อนหลังเป็น CSV">
+                        <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ================= VIEW 1: DASHBOARD ================= -->
+            <section id="view-dashboard" class="tab-view active">
+
+                <!-- Row 1: Air Quality Gauge Hero & Environment Metrics -->
+                <div class="dashboard-hero-grid">
+                    
+                    <!-- PM2.5 Gauge Hero Card -->
+                    <div class="card hero-pm-card" id="hero-card">
                         <div class="card-header">
-                            <span>TEMPERATURE</span>
+                            <div class="header-badge">
+                                <span class="badge-dot"></span>
+                                <span>AIR QUALITY INDEX</span>
+                            </div>
+                            <div class="tooltip-container">
+                                <button type="button" class="tooltip-icon" aria-label="คำอธิบายเกณฑ์ PM2.5">ⓘ</button>
+                                <div class="tooltip-text">
+                                    <strong>เกณฑ์มาตรฐาน PM2.5 (µg/m³):</strong><br>
+                                    0 - 15: ดีเยี่ยม (ฟ้า/เขียว)<br>
+                                    16 - 25: ดี (เขียวอ่อน)<br>
+                                    26 - 37: ปานกลาง (เหลือง)<br>
+                                    38 - 75: เริ่มมีผล (ส้ม)<br>
+                                    > 75: อันตราย (แดง)
+                                </div>
+                            </div>
                         </div>
-                        <div class="data-row"><span class="data-value" id="temp-val">--°C</span><span class="status-badge" id="temp-badge">--</span></div>
+
+                        <!-- Radial SVG Gauge Area -->
+                        <div class="gauge-display-wrapper">
+                            <div class="gauge-ring-container">
+                                <svg class="gauge-svg" viewBox="0 0 200 200">
+                                    <circle class="gauge-bg-circle" cx="100" cy="100" r="82" />
+                                    <circle class="gauge-fill-circle" id="pm25-circle-fill" cx="100" cy="100" r="82" />
+                                </svg>
+                                <div class="gauge-center-text">
+                                    <span class="gauge-label-micro">PM2.5</span>
+                                    <h2 class="gauge-value" id="pm25-val">--</h2>
+                                    <span class="gauge-unit">µg/m³</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Air Quality Status Banner -->
+                        <div class="pm-status-container">
+                            <div class="pm-status-pill" id="pm25-badge-pill">
+                                <span class="status-pulsar" id="status-pulsar"></span>
+                                <span id="pm25-status">กำลังเชื่อมต่อ...</span>
+                            </div>
+                            <p id="pm25-desc" class="pm-advice">รอรับข้อมูลจากเซ็นเซอร์ PMS7003</p>
+                        </div>
                     </div>
-                    <div class="card mini-card">
-                        <div class="card-header">
-                            <span>HUMIDITY</span>
+
+                    <!-- Environment Metrics Mini Cards -->
+                    <div class="env-metrics-column">
+                        
+                        <!-- Temperature Card -->
+                        <div class="card metric-card">
+                            <div class="metric-header">
+                                <div class="metric-icon-box temp-theme">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-meta">
+                                    <span class="metric-name">อุณหภูมิห้อง (Temp)</span>
+                                    <span class="metric-tag" id="temp-badge">ปกติ</span>
+                                </div>
+                            </div>
+                            <div class="metric-body">
+                                <span class="metric-number" id="temp-val">--°C</span>
+                                <div class="metric-bar-bg">
+                                    <div class="metric-bar-fill temp-fill" id="temp-bar" style="width: 50%;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="data-row"><span class="data-value" id="hum-val">--%</span><span class="status-badge" id="hum-badge">--</span></div>
-                    </div>
-                    <div class="card mini-card">
-                        <div class="card-header">
-                            <span>VOCs & AIR GAS</span>
+
+                        <!-- Humidity Card -->
+                        <div class="card metric-card">
+                            <div class="metric-header">
+                                <div class="metric-icon-box hum-theme">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-meta">
+                                    <span class="metric-name">ความชื้นสัมพัทธ์ (Humidity)</span>
+                                    <span class="metric-tag" id="hum-badge">เหมาะสม</span>
+                                </div>
+                            </div>
+                            <div class="metric-body">
+                                <span class="metric-number" id="hum-val">--%</span>
+                                <div class="metric-bar-bg">
+                                    <div class="metric-bar-fill hum-fill" id="hum-bar" style="width: 60%;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="data-row"><span class="data-value" id="mq135-val">--</span><span class="status-badge" id="mq135-badge">--</span></div>
+
+                        <!-- Gas / VOCs Card -->
+                        <div class="card metric-card">
+                            <div class="metric-header">
+                                <div class="metric-icon-box gas-theme">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                    </svg>
+                                </div>
+                                <div class="metric-meta">
+                                    <span class="metric-name">คุณภาพก๊าซ & กลิ่น (MQ135)</span>
+                                    <span class="metric-tag" id="mq135-badge">สะอาด</span>
+                                </div>
+                            </div>
+                            <div class="metric-body">
+                                <span class="metric-number" id="mq135-val">--</span>
+                                <div class="metric-bar-bg">
+                                    <div class="metric-bar-fill gas-fill" id="mq135-bar" style="width: 20%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                <!-- Mode Control -->
-                <div class="control-panel card">
-                    <div class="cp-header">
-                        <h4>OPERATION MODE CONTROL</h4>
+                <!-- Row 2: Master Purifier Controls (Modes) -->
+                <div class="card control-station-card">
+                    <div class="control-station-header">
+                        <div class="cs-title-group">
+                            <span class="badge-dot cyan"></span>
+                            <h3>โหมดการทำงานเครื่องฟอก (Operation Modes)</h3>
+                        </div>
+                        <span class="cs-hint">เลือกโหมดการทำงานเพื่อส่งคำสั่งผ่าน MQTT ไปยัง ESP32</span>
                     </div>
-                    <div class="btn-group">
-                        <button class="btn-mode" id="btn-AUTO" onclick="sendControl('AUTO')">AUTO</button>
-                        <button class="btn-mode" id="btn-HIGH" onclick="sendControl('HIGH')">HIGH</button>
-                        <button class="btn-mode" id="btn-MED" onclick="sendControl('MED')">MED</button>
-                        <button class="btn-mode" id="btn-LOW" onclick="sendControl('LOW')">LOW</button>
-                        <button class="btn-mode btn-off" id="btn-OFF" onclick="sendControl('OFF')">OFF</button>
+
+                    <div class="mode-buttons-row">
+                        <!-- AUTO -->
+                        <button class="btn-mode-card" id="btn-AUTO" onclick="sendControl('AUTO')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">AUTO</span>
+                            <span class="mode-sub">อัจฉริยะปรับตามฝุ่น</span>
+                        </button>
+
+                        <!-- SLEEP / NIGHT -->
+                        <button class="btn-mode-card" id="btn-NIGHT" onclick="sendControl('NIGHT')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">NIGHT</span>
+                            <span class="mode-sub">กลางคืน ไร้เสียงรบกวน</span>
+                        </button>
+
+                        <!-- LOW -->
+                        <button class="btn-mode-card" id="btn-LOW" onclick="sendControl('LOW')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">LOW</span>
+                            <span class="mode-sub">ความเร็วเบา ประหยัดไฟ</span>
+                        </button>
+
+                        <!-- MED -->
+                        <button class="btn-mode-card" id="btn-MED" onclick="sendControl('MED')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
+                                    <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">MED</span>
+                            <span class="mode-sub">ความเร็วปานกลาง</span>
+                        </button>
+
+                        <!-- HIGH -->
+                        <button class="btn-mode-card" id="btn-HIGH" onclick="sendControl('HIGH')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">TURBO</span>
+                            <span class="mode-sub">แรงสุด กำจัดฝุ่นด่วน</span>
+                        </button>
+
+                        <!-- OFF -->
+                        <button class="btn-mode-card btn-power-off" id="btn-OFF" onclick="sendControl('OFF')">
+                            <div class="mode-icon-wrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                                    <line x1="12" y1="2" x2="12" y2="12"/>
+                                </svg>
+                            </div>
+                            <span class="mode-name">POWER OFF</span>
+                            <span class="mode-sub">ปิดการทำงานชั่วคราว</span>
+                        </button>
                     </div>
                 </div>
-            </div>
 
-            <div class="card chart-card">
-                <div class="card-header">
-                    <h3>📈 Real-time Telemetry</h3>
-                    <button class="btn-sm" onclick="clearChartHistory()">Clear Data</button>
-                </div>
-                <div class="chart-container">
-                    <canvas id="realtimeChart"></canvas>
-                </div>
-            </div>
+                <!-- Row 3: Status Cards (Fan Relay, Filter Health, Auto-Off Timer, Quiet Timer) -->
+                <div class="quad-status-grid">
+                    
+                    <!-- Fan Relay Speed Status -->
+                    <div class="card status-panel-card">
+                        <div class="panel-header">
+                            <span class="panel-label">สถานะรีเลย์พัดลม</span>
+                            <span class="panel-pill" id="fan-pill-status">Active</span>
+                        </div>
+                        <div class="fan-visual-group">
+                            <div class="fan-icon-circle">
+                                <svg id="fan-blades-svg" class="fan-blades spin-idle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 12c-2.8 0-5-2.2-5-5 0-1.7 1.3-3 3-3 3.3 0 5 3.7 5 5 0 1.7-1.3 3-3 3Z"/>
+                                    <path d="M12 12c0-2.8 2.2-5 5-5 1.7 0 3 1.3 3 3 0 3.3-3.7 5-5 5-1.7 0-3-1.3-3-3Z"/>
+                                    <path d="M12 12c2.8 0 5 2.2 5 5 0 1.7-1.3 3-3 3-3.3 0-5-3.7-5-5 0-1.7 1.3-3 3-3Z"/>
+                                    <path d="M12 12c0 2.8-2.2 5-5 5-1.7 0-3-1.3-3-3 0-3.3 3.7-5 5-5 1.7 0 3 1.3 3 3Z"/>
+                                    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                                </svg>
+                            </div>
+                            <div class="fan-texts">
+                                <span class="fan-state-highlight" id="fan-speed">--</span>
+                                <span class="fan-caption">Relay Status: <strong id="fan-relay-caption">พร้อมทำงาน</strong></span>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="bottom-grid" style="margin-top: 20px;">
-                <div class="card status-card">
-                    <h4>FAN RELAY STATUS</h4>
-                    <p id="fan-speed" class="highlight-cyan">--</p>
+                    <!-- Filter Lifespan Health -->
+                    <div class="card status-panel-card">
+                        <div class="panel-header">
+                            <span class="panel-label">อายุการใช้งานไส้กรอง HEPA</span>
+                            <button type="button" class="btn-micro-reset" onclick="confirmResetFilter()" title="กดรีเซ็ตเมื่อเปลี่ยนแผ่นกรองใหม่">
+                                <span>รีเซ็ต</span>
+                            </button>
+                        </div>
+                        <div class="filter-visual-group">
+                            <div class="filter-stat-line">
+                                <span class="filter-percent" id="filter-val">--%</span>
+                                <span class="filter-status-tag" id="filter-health-tag">สภาพดีเยี่ยม</span>
+                            </div>
+                            <div class="filter-progress-bar">
+                                <div class="filter-progress-fill" id="filter-bar" style="width: 98%;"></div>
+                            </div>
+                            <span class="filter-tip" id="filter-days-estimate">เหลืออายุการใช้งานโดยประมาณ 175 วัน</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Auto-Off Timer -->
+                    <div class="card status-panel-card">
+                        <div class="panel-header">
+                            <span class="panel-label">⏱️ ตั้งเวลาปิดอัตโนมัติ</span>
+                            <span class="timer-active-badge" id="timer-val">OFF</span>
+                        </div>
+                        <div class="preset-timer-chips">
+                            <button class="timer-chip" onclick="setTimer(1)">+1h</button>
+                            <button class="timer-chip" onclick="setTimer(2)">+2h</button>
+                            <button class="timer-chip" onclick="setTimer(4)">+4h</button>
+                            <button class="timer-chip" onclick="setTimer(8)">+8h</button>
+                            <button class="timer-chip chip-off" onclick="setTimer(0)">ปิด</button>
+                        </div>
+                        <span class="timer-subtext">ตั้งเวลานับถอยหลังเพื่อปิดเครื่องอัตโนมัติ</span>
+                    </div>
+
+                    <!-- Night / Quiet Timer Status -->
+                    <div class="card status-panel-card">
+                        <div class="panel-header">
+                            <span class="panel-label">🌙 ช่วงเวลาพักผ่อน (Quiet)</span>
+                            <span class="panel-pill" id="qtimer-status-pill">สแตนด์บาย</span>
+                        </div>
+                        <div class="quiet-timer-body">
+                            <div class="quiet-time-display">
+                                <svg class="quiet-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                                </svg>
+                                <span id="qtimer-val" class="quiet-time-text">OFF</span>
+                            </div>
+                            <span class="quiet-caption">ระบบจะล็อกพัดลมเงียบตามเวลาที่ตั้งใน Settings</span>
+                        </div>
+                    </div>
+
                 </div>
-                <div class="card status-card">
+
+                <!-- Row 4: Real-time Telemetry Analytics Chart -->
+                <div class="card telemetry-chart-card">
+                    <div class="chart-header-row">
+                        <div class="chart-titles">
+                            <h3>📈 กราฟแนวโน้มคุณภาพอากาศย้อนหลัง (Telemetry Trend)</h3>
+                            <p>บันทึกประวัติค่าฝุ่น PM2.5 และก๊าซ MQ135 ย้อนหลัง 30 ชุดข้อมูลล่าสุด</p>
+                        </div>
+                        <div class="chart-actions">
+                            <button class="btn-clean" onclick="clearChartHistory()">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18"/>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                </svg>
+                                <span>ล้างประวัติกราฟ</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="realtimeChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ================= VIEW 2: ALERTS & INCIDENT LOGS ================= -->
+            <section id="view-alerts" class="tab-view">
+                <div class="card alerts-main-card">
                     <div class="card-header">
-                        <h4>FILTER HEALTH</h4>
+                        <div class="alerts-title-group">
+                            <div class="alert-icon-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3>ประวัติเหตุการณ์ & การแจ้งเตือนความปลอดภัย (Hazard Logs)</h3>
+                                <p class="sub-desc">ระบบจะบันทึกอัตโนมัติเมื่อตรวจพบค่าฝุ่น PM2.5 หรือก๊าซพิษเกินเกณฑ์มาตรฐาน</p>
+                            </div>
+                        </div>
+                        <div class="alert-header-actions">
+                            <button class="btn-clean" onclick="clearAlerts()">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 6h18"/>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                </svg>
+                                <span>ล้างประวัติทั้งหมด</span>
+                            </button>
+                        </div>
                     </div>
-                    <p id="filter-val">--%</p>
-                    <button class="btn-reset-filter" onclick="resetFilter()">Reset Filter</button>
+
+                    <!-- Alerts Filter & Container -->
+                    <div class="alert-list-wrapper">
+                        <ul id="alert-list" class="alert-list">
+                            <!-- Injected by script -->
+                        </ul>
+                    </div>
                 </div>
-                <div class="card status-card">
-                    <div class="card-header">
-                        <h4>⏱️ QUICK AUTO-OFF</h4>
+            </section>
+
+            <!-- ================= VIEW 3: SETTINGS ================= -->
+            <section id="view-settings" class="tab-view">
+                <div class="settings-two-col">
+
+                    <!-- Section A: Hardware Sensor Thresholds & Fan Speed Curve -->
+                    <div class="card settings-card">
+                        <div class="settings-card-head">
+                            <div class="set-icon-box">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3>เกณฑ์เซ็นเซอร์ & ความเร็วพัดลม (ESP32 Thresholds)</h3>
+                                <p class="sub-desc">กำหนดค่าเกณฑ์ที่จะให้พัดลมในโหมด AUTO เร่งความเร็วพัดลมอัตโนมัติ</p>
+                            </div>
+                        </div>
+
+                        <div class="sync-status-bar">
+                            <span class="sync-dot"></span>
+                            <span id="config-status">กำลังรอรับค่า Config จากบอร์ด ESP32...</span>
+                        </div>
+
+                        <form onsubmit="saveHardwareSettings(event)" class="settings-form">
+                            <!-- PM2.5 Thresholds -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span>เกณฑ์ฝุ่น PM2.5 (µg/m³)</span>
+                                    <small class="label-hint">แนะนำ: ปานกลาง 35 / สูง 50</small>
+                                </label>
+                                <div class="form-row-two">
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">เริ่มระดับกลาง (MED)</span>
+                                        <input type="number" id="cfg-pm-med" placeholder="35" min="5" max="500" required>
+                                    </div>
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">เริ่มระดับเทอร์โบ (HIGH)</span>
+                                        <input type="number" id="cfg-pm-high" placeholder="50" min="10" max="500" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- MQ135 Gas Thresholds -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span>เกณฑ์ก๊าซ & กลิ่น MQ135 (Raw ADC)</span>
+                                    <small class="label-hint">แนะนำ: ปานกลาง 400 / สูง 600</small>
+                                </label>
+                                <div class="form-row-two">
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">เริ่มระดับกลาง (MED)</span>
+                                        <input type="number" id="cfg-mq-med" placeholder="400" min="50" max="4095" required>
+                                    </div>
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">เริ่มระดับเทอร์โบ (HIGH)</span>
+                                        <input type="number" id="cfg-mq-high" placeholder="600" min="100" max="4095" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Night Mode Schedule -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span>ช่วงเวลาโหมดกลางคืน (Night Mode Hours: 0 - 23 น.)</span>
+                                    <small class="label-hint">ตัวอย่าง: 22 ถึง 6 (22:00 น. - 06:00 น.)</small>
+                                </label>
+                                <div class="form-row-two">
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">เริ่มเวลา (Start Hour)</span>
+                                        <input type="number" id="cfg-night-start" placeholder="22" min="0" max="23" required>
+                                    </div>
+                                    <div class="input-with-label">
+                                        <span class="input-prefix">สิ้นสุดเวลา (End Hour)</span>
+                                        <input type="number" id="cfg-night-end" placeholder="6" min="0" max="23" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-submit-primary">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                    <polyline points="17 21 17 13 7 13 7 21"/>
+                                    <polyline points="7 3 7 8 15 8"/>
+                                </svg>
+                                <span>บันทึกและส่งไปยัง ESP32 (Push Config)</span>
+                            </button>
+                        </form>
                     </div>
-                    <div class="timer-display">
-                        <span id="timer-val" class="highlight-cyan">OFF</span>
-                    </div>
-                    <div class="preset-btn-group">
-                        <button class="btn-preset" onclick="setTimer(1)">+1h</button>
-                        <button class="btn-preset" onclick="setTimer(2)">+2h</button>
-                        <button class="btn-preset" onclick="setTimer(4)">+4h</button>
-                        <button class="btn-preset btn-cancel" onclick="setTimer(0)">Off</button>
+
+                    <!-- Column 2: Network & MQTT Connection Provisioning -->
+                    <div class="settings-column-stacked">
+                        
+                        <!-- Section B: ESP32 Wi-Fi & Broker Provisioning -->
+                        <div class="card settings-card">
+                            <div class="settings-card-head">
+                                <div class="set-icon-box wifi-theme">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                                        <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                                        <line x1="12" y1="20" x2="12.01" y2="20"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3>การเชื่อมต่อ Wi-Fi & คลาวด์ของ ESP32</h3>
+                                    <p class="sub-desc">การเปลี่ยนค่าส่วนนี้จะสั่งให้บอร์ด ESP32 รีสตาร์ทและต่อเน็ตใหม่</p>
+                                </div>
+                            </div>
+
+                            <form onsubmit="saveCloudSettings(event)" class="settings-form">
+                                <div class="form-group">
+                                    <label class="form-label">ชื่อ Wi-Fi (SSID)</label>
+                                    <input type="text" id="cfg-wifi-ssid" placeholder="Wi-Fi Router 2.4GHz" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">รหัสผ่าน Wi-Fi</label>
+                                    <input type="password" id="cfg-wifi-pass" placeholder="Wi-Fi Password">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">MQTT Broker Host</label>
+                                    <input type="text" id="cfg-mqtt-host" placeholder="o1c1f1d1.ala.asia-southeast1.emqxsl.com" required>
+                                </div>
+                                <div class="form-row-two">
+                                    <div class="form-group">
+                                        <label class="form-label">MQTT Port</label>
+                                        <input type="number" id="cfg-mqtt-port" placeholder="8883" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">MQTT Username</label>
+                                        <input type="text" id="cfg-mqtt-user" placeholder="purifier_admin">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn-submit-danger">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                                    </svg>
+                                    <span>สั่ง Re-provision บอร์ด ESP32</span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Section C: Web Dashboard MQTT Broker Config -->
+                        <div class="card settings-card">
+                            <div class="settings-card-head">
+                                <div class="set-icon-box broker-theme">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+                                        <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+                                        <line x1="6" y1="6" x2="6.01" y2="6"/>
+                                        <line x1="6" y1="18" x2="6.01" y2="18"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3>ตั้งค่าการเชื่อมต่อเบราว์เซอร์ (Web MQTT Client)</h3>
+                                    <p class="sub-desc">ตั้งค่า WebSocket URL ของแดชบอร์ดนี้ (บันทึกในเครื่องนี้)</p>
+                                </div>
+                            </div>
+
+                            <form onsubmit="saveWebMqttSettings(event)" class="settings-form">
+                                <div class="form-group">
+                                    <label class="form-label">WebSocket Broker Host</label>
+                                    <input type="text" id="web-mqtt-host" placeholder="o1c1f1d1.ala.asia-southeast1.emqxsl.com" required>
+                                </div>
+                                <div class="form-row-two">
+                                    <div class="form-group">
+                                        <label class="form-label">WSS Port</label>
+                                        <input type="number" id="web-mqtt-port" placeholder="8084" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" id="web-mqtt-user" placeholder="purifier_admin">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Password</label>
+                                    <input type="password" id="web-mqtt-pass" placeholder="••••••••">
+                                </div>
+
+                                <div class="btn-group-row">
+                                    <button type="submit" class="btn-submit-secondary">
+                                        <span>บันทึกและเชื่อมต่อใหม่</span>
+                                    </button>
+                                    <button type="button" class="btn-reset-defaults" onclick="resetWebMqttDefaults()">
+                                        <span>คืนค่าเริ่มต้น</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
                     </div>
                 </div>
-                <div class="card status-card">
-                    <h4>QUIET TIMER</h4>
-                    <p id="qtimer-val">OFF</p>
-                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ================= MOBILE BOTTOM NAVIGATION ================= -->
+    <nav class="mobile-bottom-nav">
+        <button class="bottom-nav-item active" onclick="switchTab('dashboard')" id="mobile-nav-dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="7" height="9" x="3" y="3" rx="1"/>
+                <rect width="7" height="5" x="14" y="3" rx="1"/>
+                <rect width="7" height="9" x="14" y="12" rx="1"/>
+                <rect width="7" height="5" x="3" y="16" rx="1"/>
+            </svg>
+            <span>แดชบอร์ด</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchTab('alerts')" id="mobile-nav-alerts">
+            <div class="nav-icon-badge-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span id="mobile-alert-badge" class="badge-count-mobile">0</span>
             </div>
-        </section>
+            <span>แจ้งเตือน</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchTab('settings')" id="mobile-nav-settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>ตั้งค่า</span>
+        </button>
+        <button class="bottom-nav-item" onclick="toggleTheme()" id="mobile-nav-theme">
+            <span id="mobile-theme-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                </svg>
+            </span>
+            <span>ธีม</span>
+        </button>
+    </nav>
 
-        <!-- ================= PAGE 2: ALERTS ================= -->
-        <section id="view-alerts" class="tab-view">
-            <div class="card">
-                <div class="card-header">
-                    <h3>⚠️ Danger & Incident Logs</h3>
-                    <button class="btn-sm" onclick="clearAlerts()">Clear Logs</button>
-                </div>
-                <div class="alert-list-container">
-                    <ul id="alert-list" class="alert-list"></ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- ================= PAGE 3: SETTINGS ================= -->
-        <section id="view-settings" class="tab-view">
-            <div class="settings-grid">
-                <!-- Hardware Thresholds -->
-                <div class="card">
-                    <div class="card-header" style="margin-bottom:0;">
-                        <h3 style="color:var(--text-main);">⚙️ Sensor Thresholds</h3>
-                        <span id="config-status" style="font-size: 0.75rem; color: var(--text-muted);">Waiting for sync...</span>
-                    </div>
-                    <p class="sub-desc" style="margin-bottom:15px;">ค่าปัจจุบันจะถูกดึงมาจาก ESP32 อัตโนมัติ</p>
-                    <form onsubmit="saveHardwareSettings(event)">
-                        <div class="form-group">
-                            <label>PM2.5 (µg/m³)</label>
-                            <div class="form-row">
-                                <input type="number" id="cfg-pm-med" placeholder="Med Speed" required>
-                                <input type="number" id="cfg-pm-high" placeholder="High Speed" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>MQ135 Gas (Raw)</label>
-                            <div class="form-row">
-                                <input type="number" id="cfg-mq-med" placeholder="Med Speed" required>
-                                <input type="number" id="cfg-mq-high" placeholder="High Speed" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Night Mode (Hours 0-23)</label>
-                            <div class="form-row">
-                                <input type="number" id="cfg-night-start" placeholder="Start Hour" min="0" max="23" required>
-                                <input type="number" id="cfg-night-end" placeholder="End Hour" min="0" max="23" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-submit">Push to ESP32</button>
-                    </form>
-                </div>
-
-                <!-- Cloud Settings -->
-                <div class="card">
-                    <h3>🌐 Wi-Fi & Cloud Broker</h3>
-                    <p class="sub-desc" style="margin-bottom:15px;">เปลี่ยนเครือข่ายจะทำให้บอร์ดรีสตาร์ท</p>
-                    <form onsubmit="saveCloudSettings(event)">
-                        <div class="form-group">
-                            <label>Target Wi-Fi SSID</label>
-                            <input type="text" id="cfg-wifi-ssid" placeholder="Wi-Fi Name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Target Wi-Fi Password</label>
-                            <input type="password" id="cfg-wifi-pass" placeholder="Wi-Fi Password">
-                        </div>
-                        <div class="form-group">
-                            <label>MQTT Host</label>
-                            <input type="text" id="cfg-mqtt-host" placeholder="Broker Hostname" required>
-                        </div>
-                        <div class="form-group">
-                            <label>MQTT Port / User</label>
-                            <div class="form-row">
-                                <input type="number" id="cfg-mqtt-port" placeholder="Port (8883)" required>
-                                <input type="text" id="cfg-mqtt-user" placeholder="Username">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn-submit btn-warning">Re-provision ESP32</button>
-                    </form>
-                </div>
-            </div>
-        </section>
-    </main>
-
+    <!-- Scripts -->
     <script src="app.js"></script>
 </body>
 </html>
