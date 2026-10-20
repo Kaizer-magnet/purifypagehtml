@@ -1,13 +1,32 @@
+const CACHE_NAME = 'purifier-v2';
+
 self.addEventListener('install', (e) => {
+    self.skipWaiting();
     e.waitUntil(
-        caches.open('purifier-v1').then((cache) => {
-            return cache.addAll(['/', '/index.html', '/style.css', '/app.js']);
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(['./', './index.html', './style.css', './app.js']);
         })
+    );
+});
+
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then((keys) => {
+            return Promise.all(
+                keys.map((key) => {
+                    if (key !== CACHE_NAME) {
+                        return caches.delete(key);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (e) => {
     e.respondWith(
-        caches.match(e.request).then((res) => res || fetch(e.request))
+        fetch(e.request).catch(() => caches.match(e.request))
     );
+});
+
 });
