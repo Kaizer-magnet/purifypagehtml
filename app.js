@@ -315,10 +315,19 @@ function applyTelemetryData(data) {
         const mqEl = document.getElementById("mq135-val");
         const mqBadge = document.getElementById("mq135-badge");
         const mqBar = document.getElementById("mq135-bar");
-        if (mqEl) mqEl.innerText = data.mq135;
-        if (mqBadge) {
-            mqBadge.innerText = data.mq135 > 600 ? "อันตราย" : (data.mq135 > 350 ? "มีกลิ่น/ควัน" : "สะอาด");
+        
+        let gasText = "ไร้กลิ่น/สะอาด";
+        let gasBadge = "อากาศบริสุทธิ์";
+        if (data.mq135 > 600) {
+            gasText = "พบกลิ่น/ควันหนาแน่น";
+            gasBadge = "มลพิษสูง";
+        } else if (data.mq135 > 350) {
+            gasText = "มีกลิ่นควันบางเบา";
+            gasBadge = "ปานกลาง";
         }
+
+        if (mqEl) mqEl.innerText = gasText;
+        if (mqBadge) mqBadge.innerText = gasBadge;
         if (mqBar) {
             const mPct = Math.min(Math.max((data.mq135 / 800) * 100, 8), 100);
             mqBar.style.width = `${mPct}%`;
@@ -664,6 +673,27 @@ function confirmResetFilter() {
 }
 
 // ================= HARDWARE & BROKER SETTINGS FORMS =================
+function applySensitivityPreset(type) {
+    const pmMed = document.getElementById("cfg-pm-med");
+    const pmHigh = document.getElementById("cfg-pm-high");
+    const mqMed = document.getElementById("cfg-mq-med");
+    const mqHigh = document.getElementById("cfg-mq-high");
+
+    if (type === "sensitive") {
+        if (pmMed) pmMed.value = 25;
+        if (pmHigh) pmHigh.value = 35;
+        if (mqMed) mqMed.value = 300;
+        if (mqHigh) mqHigh.value = 450;
+        showToast("เลือกโหมด: ไวพิเศษ (สำหรับคนเป็นภูมิแพ้ / ฝุ่นเล็กน้อยก็เร่งฟอก)", "info");
+    } else {
+        if (pmMed) pmMed.value = 35;
+        if (pmHigh) pmHigh.value = 50;
+        if (mqMed) mqMed.value = 400;
+        if (mqHigh) mqHigh.value = 600;
+        showToast("เลือกโหมด: ความไวมาตรฐาน (แนะนำสำหรับบ้านทั่วไป)", "info");
+    }
+}
+
 function saveHardwareSettings(e) {
     e.preventDefault();
     const pmMed = parseInt(document.getElementById("cfg-pm-med").value);

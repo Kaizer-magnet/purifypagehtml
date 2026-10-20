@@ -280,7 +280,7 @@
                                 </div>
                             </div>
                             <div class="metric-body">
-                                <span class="metric-number" id="mq135-val">--</span>
+                                <span class="metric-number" id="mq135-val" style="font-size: 1.15rem;">--</span>
                                 <div class="metric-bar-bg">
                                     <div class="metric-bar-fill gas-fill" id="mq135-bar" style="width: 20%;"></div>
                                 </div>
@@ -518,7 +518,7 @@
             <section id="view-settings" class="tab-view">
                 <div class="settings-two-col">
 
-                    <!-- Section A: Hardware Sensor Thresholds & Fan Speed Curve -->
+                    <!-- Section A: Simple & Friendly Air Purifier Operation Settings -->
                     <div class="card settings-card">
                         <div class="settings-card-head">
                             <div class="set-icon-box">
@@ -528,66 +528,67 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3>เกณฑ์เซ็นเซอร์ & ความเร็วพัดลม (ESP32 Thresholds)</h3>
-                                <p class="sub-desc">กำหนดค่าเกณฑ์ที่จะให้พัดลมในโหมด AUTO เร่งความเร็วพัดลมอัตโนมัติ</p>
+                                <h3>การปรับแต่งโหมดอัจฉริยะ (Smart Automation)</h3>
+                                <p class="sub-desc">ปรับความไวของเซ็นเซอร์และช่วงเวลานอนหลับให้เหมาะสมกับบ้านคุณ</p>
                             </div>
                         </div>
 
                         <div class="sync-status-bar">
                             <span class="sync-dot"></span>
-                            <span id="config-status">กำลังรอรับค่า Config จากบอร์ด ESP32...</span>
+                            <span id="config-status">กำลังซิงค์ค่าล่าสุดจากเครื่องฟอกอากาศ...</span>
                         </div>
 
                         <form onsubmit="saveHardwareSettings(event)" class="settings-form">
+                            <!-- Preset Sensitivity -->
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <span>ระดับความไวของโหมดอัตโนมัติ (Auto Mode Sensitivity)</span>
+                                </label>
+                                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                                    <button type="button" class="btn-secondary" style="flex:1; padding: 10px; font-size: 13px;" onclick="applySensitivityPreset('normal')">
+                                        🍃 ปกติ (แนะนำทั่วไป)
+                                    </button>
+                                    <button type="button" class="btn-secondary" style="flex:1; padding: 10px; font-size: 13px;" onclick="applySensitivityPreset('sensitive')">
+                                        ⚡ ไวพิเศษ (สำหรับคนเป็นภูมิแพ้)
+                                    </button>
+                                </div>
+                            </div>
+
                             <!-- PM2.5 Thresholds -->
                             <div class="form-group">
                                 <label class="form-label">
-                                    <span>เกณฑ์ฝุ่น PM2.5 (µg/m³)</span>
-                                    <small class="label-hint">แนะนำ: ปานกลาง 35 / สูง 50</small>
+                                    <span>เกณฑ์ฝุ่น PM2.5 ในการเร่งพัดลม (µg/m³)</span>
+                                    <small class="label-hint">ค่ามาตรฐาน: ลมกลางเมื่อเกิน 35 / ลมแรงเมื่อเกิน 50</small>
                                 </label>
                                 <div class="form-row-two">
                                     <div class="input-with-label">
-                                        <span class="input-prefix">เริ่มระดับกลาง (MED)</span>
+                                        <span class="input-prefix">ลมกลางเมื่อฝุ่นเกิน</span>
                                         <input type="number" id="cfg-pm-med" placeholder="35" min="5" max="500" required>
                                     </div>
                                     <div class="input-with-label">
-                                        <span class="input-prefix">เริ่มระดับเทอร์โบ (HIGH)</span>
+                                        <span class="input-prefix">ลมแรงสุดเมื่อฝุ่นเกิน</span>
                                         <input type="number" id="cfg-pm-high" placeholder="50" min="10" max="500" required>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- MQ135 Gas Thresholds -->
-                            <div class="form-group">
-                                <label class="form-label">
-                                    <span>เกณฑ์ก๊าซ & กลิ่น MQ135 (Raw ADC)</span>
-                                    <small class="label-hint">แนะนำ: ปานกลาง 400 / สูง 600</small>
-                                </label>
-                                <div class="form-row-two">
-                                    <div class="input-with-label">
-                                        <span class="input-prefix">เริ่มระดับกลาง (MED)</span>
-                                        <input type="number" id="cfg-mq-med" placeholder="400" min="50" max="4095" required>
-                                    </div>
-                                    <div class="input-with-label">
-                                        <span class="input-prefix">เริ่มระดับเทอร์โบ (HIGH)</span>
-                                        <input type="number" id="cfg-mq-high" placeholder="600" min="100" max="4095" required>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- MQ135 Gas Thresholds (Hidden or simplified) -->
+                            <input type="hidden" id="cfg-mq-med" value="400">
+                            <input type="hidden" id="cfg-mq-high" value="600">
 
                             <!-- Night Mode Schedule -->
                             <div class="form-group">
                                 <label class="form-label">
-                                    <span>ช่วงเวลาโหมดกลางคืน (Night Mode Hours: 0 - 23 น.)</span>
-                                    <small class="label-hint">ตัวอย่าง: 22 ถึง 6 (22:00 น. - 06:00 น.)</small>
+                                    <span>ช่วงเวลาโหมดนอนหลับ (Night Schedule)</span>
+                                    <small class="label-hint">เครื่องจะลดเสียงพัดลมเงียบสนิทและปิดไฟหน้าจอในเวลานี้</small>
                                 </label>
                                 <div class="form-row-two">
                                     <div class="input-with-label">
-                                        <span class="input-prefix">เริ่มเวลา (Start Hour)</span>
+                                        <span class="input-prefix">เริ่มนอน (นาฬิกา)</span>
                                         <input type="number" id="cfg-night-start" placeholder="22" min="0" max="23" required>
                                     </div>
                                     <div class="input-with-label">
-                                        <span class="input-prefix">สิ้นสุดเวลา (End Hour)</span>
+                                        <span class="input-prefix">ตื่นนอน (นาฬิกา)</span>
                                         <input type="number" id="cfg-night-end" placeholder="6" min="0" max="23" required>
                                     </div>
                                 </div>
@@ -599,15 +600,15 @@
                                     <polyline points="17 21 17 13 7 13 7 21"/>
                                     <polyline points="7 3 7 8 15 8"/>
                                 </svg>
-                                <span>บันทึกและส่งไปยัง ESP32 (Push Config)</span>
+                                <span>บันทึกการตั้งค่าไปยังเครื่องฟอกอากาศ</span>
                             </button>
                         </form>
                     </div>
 
-                    <!-- Column 2: Network & MQTT Connection Provisioning -->
+                    <!-- Column 2: Easy Wi-Fi Guide & Advanced Settings -->
                     <div class="settings-column-stacked">
                         
-                        <!-- Section B: ESP32 Wi-Fi & Broker Provisioning -->
+                        <!-- Easy Wi-Fi Setup Guide (Friendly & Practical) -->
                         <div class="card settings-card">
                             <div class="settings-card-head">
                                 <div class="set-icon-box wifi-theme">
@@ -619,91 +620,64 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3>การเชื่อมต่อ Wi-Fi & คลาวด์ของ ESP32</h3>
-                                    <p class="sub-desc">การเปลี่ยนค่าส่วนนี้จะสั่งให้บอร์ด ESP32 รีสตาร์ทและต่อเน็ตใหม่</p>
+                                    <h3>การเชื่อมต่อ Wi-Fi ของเครื่องฟอกอากาศ</h3>
+                                    <p class="sub-desc">วิธีตั้งค่าเมื่อย้ายจุดติดตั้งหรือเปลี่ยนรหัส Wi-Fi บ้าน</p>
                                 </div>
                             </div>
 
-                            <form onsubmit="saveCloudSettings(event)" class="settings-form">
-                                <div class="form-group">
-                                    <label class="form-label">ชื่อ Wi-Fi (SSID)</label>
-                                    <input type="text" id="cfg-wifi-ssid" placeholder="Wi-Fi Router 2.4GHz" required>
+                            <div style="padding: 12px 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary);">
+                                <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
+                                    <div style="background: rgba(14, 165, 233, 0.15); color: var(--accent-cyan); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">1</div>
+                                    <div>หากเครื่องต่อ Wi-Fi เดิมไม่ได้ เครื่องจะเปิด Hotspot ชื่อ <strong>"AirPurifier_Setup"</strong> อัตโนมัติ</div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">รหัสผ่าน Wi-Fi</label>
-                                    <input type="password" id="cfg-wifi-pass" placeholder="Wi-Fi Password">
+                                <div style="display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start;">
+                                    <div style="background: rgba(14, 165, 233, 0.15); color: var(--accent-cyan); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">2</div>
+                                    <div>ใช้มือถือเชื่อมต่อ Wi-Fi ดังกล่าว จากนั้นเปิดเบราว์เซอร์ไปที่ <strong>http://192.168.4.1</strong> เพื่อเลือก Wi-Fi บ้านของคุณ</div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">MQTT Broker Host</label>
-                                    <input type="text" id="cfg-mqtt-host" placeholder="o1c1f1d1.ala.asia-southeast1.emqxsl.com" required>
-                                </div>
-                                <div class="form-row-two">
-                                    <div class="form-group">
-                                        <label class="form-label">MQTT Port</label>
-                                        <input type="number" id="cfg-mqtt-port" placeholder="8883" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">MQTT Username</label>
-                                        <input type="text" id="cfg-mqtt-user" placeholder="purifier_admin">
-                                    </div>
-                                </div>
-
-                                <button type="submit" class="btn-submit-danger">
-                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                                    </svg>
-                                    <span>สั่ง Re-provision บอร์ด ESP32</span>
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- Section C: Web Dashboard MQTT Broker Config -->
-                        <div class="card settings-card">
-                            <div class="settings-card-head">
-                                <div class="set-icon-box broker-theme">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
-                                        <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
-                                        <line x1="6" y1="6" x2="6.01" y2="6"/>
-                                        <line x1="6" y1="18" x2="6.01" y2="18"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3>ตั้งค่าการเชื่อมต่อเบราว์เซอร์ (Web MQTT Client)</h3>
-                                    <p class="sub-desc">ตั้งค่า WebSocket URL ของแดชบอร์ดนี้ (บันทึกในเครื่องนี้)</p>
-                                </div>
+                                <a href="http://192.168.4.1" target="_blank" class="btn-submit-secondary" style="display: flex; text-decoration: none; justify-content: center; align-items: center; gap: 8px; margin-top: 10px;">
+                                    <span>🌐 เปิดหน้าต่าง Wi-Fi Setup Portal (192.168.4.1)</span>
+                                </a>
                             </div>
-
-                            <form onsubmit="saveWebMqttSettings(event)" class="settings-form">
-                                <div class="form-group">
-                                    <label class="form-label">WebSocket Broker Host</label>
-                                    <input type="text" id="web-mqtt-host" placeholder="o1c1f1d1.ala.asia-southeast1.emqxsl.com" required>
-                                </div>
-                                <div class="form-row-two">
-                                    <div class="form-group">
-                                        <label class="form-label">WSS Port</label>
-                                        <input type="number" id="web-mqtt-port" placeholder="8084" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Username</label>
-                                        <input type="text" id="web-mqtt-user" placeholder="purifier_admin">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Password</label>
-                                    <input type="password" id="web-mqtt-pass" placeholder="••••••••">
-                                </div>
-
-                                <div class="btn-group-row">
-                                    <button type="submit" class="btn-submit-secondary">
-                                        <span>บันทึกและเชื่อมต่อใหม่</span>
-                                    </button>
-                                    <button type="button" class="btn-reset-defaults" onclick="resetWebMqttDefaults()">
-                                        <span>คืนค่าเริ่มต้น</span>
-                                    </button>
-                                </div>
-                            </form>
                         </div>
+
+                        <!-- Advanced Developer Settings (Collapsible) -->
+                        <details class="card settings-card" style="cursor: pointer;">
+                            <summary style="font-weight: 600; font-size: 15px; color: var(--text-muted); padding: 6px 0; outline: none;">
+                                ⚙️ การตั้งค่าขั้นสูง (Advanced / Developer Mode)
+                            </summary>
+                            <div style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                                <p class="sub-desc" style="margin-bottom: 16px;">กำหนดค่าการเชื่อมต่อ WebSocket MQTT Broker ของเว็บเบราว์เซอร์ (ปกติระบบมีค่าเริ่มต้นที่พร้อมใช้งานอยู่แล้ว)</p>
+                                <form onsubmit="saveWebMqttSettings(event)" class="settings-form">
+                                    <div class="form-group">
+                                        <label class="form-label">WebSocket Broker Host</label>
+                                        <input type="text" id="web-mqtt-host" placeholder="o1c1f1d1.ala.asia-southeast1.emqxsl.com" required>
+                                    </div>
+                                    <div class="form-row-two">
+                                        <div class="form-group">
+                                            <label class="form-label">WSS Port</label>
+                                            <input type="number" id="web-mqtt-port" placeholder="8084" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Username</label>
+                                            <input type="text" id="web-mqtt-user" placeholder="purifier_admin">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" id="web-mqtt-pass" placeholder="••••••••">
+                                    </div>
+
+                                    <div class="btn-group-row">
+                                        <button type="submit" class="btn-submit-secondary">
+                                            <span>บันทึกและเชื่อมต่อใหม่</span>
+                                        </button>
+                                        <button type="button" class="btn-reset-defaults" onclick="resetWebMqttDefaults()">
+                                            <span>คืนค่าเริ่มต้น</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </details>
 
                     </div>
                 </div>
